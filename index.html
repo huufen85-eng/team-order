@@ -83,7 +83,7 @@
                     </svg>
                     <span>預設人員清冊 (移至標籤可快捷點餐)</span>
                 </div>
-                <button onclick="toggleMemberModal()" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition flex items-center gap-1">
+                <button type="button" onclick="toggleMemberModal()" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition flex items-center gap-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
@@ -123,7 +123,7 @@
                     </svg>
                     <span>常用店家與菜單快捷庫</span>
                 </div>
-                <button id="toggle-menu-form" class="text-xs text-amber-600 hover:text-amber-700 font-medium transition flex items-center gap-1">
+                <button type="button" id="toggle-menu-form" class="text-xs text-amber-600 hover:text-amber-700 font-medium transition flex items-center gap-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
@@ -142,7 +142,7 @@
                 </div>
                 <textarea id="new-store-menu" rows="3" placeholder="菜單品項 (每行一項：品項 金額，例如：珍珠奶茶 60)" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-y"></textarea>
                 <div class="flex justify-end gap-2">
-                    <button id="save-store-btn" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium">儲存店家</button>
+                    <button type="button" id="save-store-btn" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium">儲存店家</button>
                 </div>
             </div>
 
@@ -159,7 +159,7 @@
                     <label for="order-input" class="block text-sm font-medium text-slate-700">
                         訂餐資料輸入 (支援 `# 店家名稱` 分組或每行指定)
                     </label>
-                    <button id="demo-btn" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline transition">
+                    <button type="button" id="demo-btn" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline transition">
                         帶入多店家範例
                     </button>
                 </div>
@@ -216,13 +216,13 @@
         <section id="export-section" class="border-t border-slate-200 pt-6 space-y-3 no-print hidden">
             <h3 class="text-sm font-semibold text-slate-700">資料導出與分享</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button onclick="copyGroupText()" class="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center justify-center gap-2">
+                <button type="button" onclick="copyGroupText()" class="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center justify-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                     </svg>
                     複製群組對帳明細 (純文字)
                 </button>
-                <button onclick="exportShopSummaryCSV()" class="w-full py-2.5 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition flex items-center justify-center gap-2 border border-indigo-200">
+                <button type="button" onclick="exportShopSummaryCSV()" class="w-full py-2.5 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition flex items-center justify-center gap-2 border border-indigo-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
@@ -296,9 +296,10 @@
     <!-- JavaScript 邏輯處理 -->
     <script>
         let globalOrders = []; 
-        let activeStores = ["50嵐", "正忠排骨飯"]; 
+        let activeStores = JSON.parse(localStorage.getItem('team_active_stores')) || ["50嵐", "正忠排骨飯"]; 
         
-        let storeDatabase = [
+        // 優先從瀏覽器本機記憶載入店家與菜單，刪除或新增後會自動記憶
+        let storeDatabase = JSON.parse(localStorage.getItem('team_stores')) || [
             {
                 name: "50嵐",
                 isDrink: true,
@@ -368,6 +369,10 @@
                         }
                     }
 
+                    // 儲存至瀏覽器本機記憶
+                    localStorage.setItem('team_stores', JSON.stringify(storeDatabase));
+                    localStorage.setItem('team_active_stores', JSON.stringify(activeStores));
+
                     document.getElementById('new-store-name').value = '';
                     document.getElementById('new-store-is-drink').checked = false;
                     document.getElementById('new-store-menu').value = '';
@@ -416,6 +421,7 @@
             } else {
                 activeStores.push(storeName);
             }
+            localStorage.setItem('team_active_stores', JSON.stringify(activeStores));
             renderActiveStoresSelector();
             renderStoreDatabase();
         }
@@ -481,6 +487,11 @@
                 if (aIdx >= 0) activeStores.splice(aIdx, 1);
             }
             storeDatabase.splice(index, 1);
+
+            // 💾 記錄刪除狀態至瀏覽器本機記憶
+            localStorage.setItem('team_stores', JSON.stringify(storeDatabase));
+            localStorage.setItem('team_active_stores', JSON.stringify(activeStores));
+
             renderActiveStoresSelector();
             renderStoreDatabase();
         }
