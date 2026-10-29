@@ -1470,19 +1470,6 @@
             popover.style.top = `${top}px`;
             popover.style.left = `${left}px`;
         }
-                        });
-                    }
-
-                    html += `</div>`;
-                });
-                itemsEl.innerHTML = html;
-            }
-
-            const rect = event.currentTarget.getBoundingClientRect();
-            popover.style.top = `${Math.min(rect.bottom + window.scrollY + 6, window.innerHeight + window.scrollY - 280)}px`;
-            popover.style.left = `${Math.min(rect.left + window.scrollX, window.innerWidth - 330)}px`;
-            popover.classList.remove('hidden');
-        }
 
         function handleItemClick(shop, name, item, price) {
             const store = storeDatabase.find(s => s.name === shop);
@@ -1509,7 +1496,7 @@
 
         function closeDrinkSelector() {
             pendingDrinkOrder = null;
-            document.getElementById('drink-options-selector').classList.add('hidden');
+            document.getElementById('drink-options-selector').classList.remove('hidden') ? document.getElementById('drink-options-selector').classList.add('hidden') : null;
             document.getElementById('popover-menu-items').classList.remove('hidden');
         }
 
@@ -1569,16 +1556,13 @@
             textarea.value = content;
             showToast(`已新增：${name} - ${item} ($${price})`);
             hideQuickOrderPopover();
-            
-            // 自動更新訂餐計算與狀態
             processOrders();
         }
 
         document.addEventListener('click', function(e) {
             const popover = document.getElementById('quick-order-popover');
             const container = document.getElementById('members-list-container');
-            const pendingCard = document.getElementById('pending-members-card');
-            if (popover && !popover.contains(e.target) && container && !container.contains(e.target) && pendingCard && !pendingCard.contains(e.target)) {
+            if (popover && !popover.contains(e.target) && container && !container.contains(e.target)) {
                 hideQuickOrderPopover();
             }
         });
@@ -1593,10 +1577,11 @@
 
         function renderModalMemberList() {
             const container = document.getElementById('modal-member-list');
+            if (!container) return;
             container.innerHTML = defaultMembers.map((m, idx) => `
                 <div class="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                     <span class="text-slate-800 font-medium">${escapeHtml(m)}</span>
-                    <button type="button" onclick="removeMember(${idx})" class="text-rose-600 hover:text-rose-800 font-semibold">刪除</button>
+                    <button type="button" onclick="removeMember(${idx})" class="text-rose-600 hover:text-rose-800 font-medium">刪除</button>
                 </div>
             `).join('');
         }
@@ -1611,73 +1596,55 @@
                     input.value = '';
                     renderModalMemberList();
                     renderMemberBadges();
-                    showToast(`已新增成員：${name}`);
                 } else {
-                    showToast("此成員已在列表中！", true);
+                    showToast("成員已存在！", true);
                 }
             }
         }
 
-        // 批量匯入成員邏輯
         function importBatchMembers() {
-            const textarea = document.getElementById('batch-members-input');
-            const rawText = textarea.value.trim();
+            const input = document.getElementById('batch-members-input');
+            const rawText = input.value.trim();
+            if (!rawText) return;
 
-            if (!rawText) {
-                showToast("請輸入要匯入的人員名單！", true);
-                return;
-            }
+            const newMembers = rawText.split(/[,，\s\n、]+/).map(m => m.trim()).filter(m => m.length > 0);
+            let count = 0;
 
-            // 使用正則表達式分割：換行、半形/全形逗號、頓號、多個空白字元
-            const parsedNames = rawText.split(/[\n,，\s、]+/).map(n => n.trim()).filter(n => n.length > 0);
-
-            if (parsedNames.length === 0) {
-                showToast("未解析到有效的人員姓名", true);
-                return;
-            }
-
-            let addedCount = 0;
-            parsedNames.forEach(name => {
+            newMembers.forEach(name => {
                 if (!defaultMembers.includes(name)) {
                     defaultMembers.push(name);
-                    addedCount++;
+                    count++;
                 }
             });
 
-            if (addedCount > 0) {
+            if (count > 0) {
                 localStorage.setItem('team_members', JSON.stringify(defaultMembers));
-                textarea.value = '';
+                input.value = '';
                 renderModalMemberList();
                 renderMemberBadges();
-                showToast(`成功匯入 ${addedCount} 位成員！`);
+                showToast(`已成功批量匯入 ${count} 位成員！`);
             } else {
-                showToast("輸入的成員均已存在於名單中！", true);
+                showToast("無新增新成員（可能皆已存在）", true);
             }
         }
 
-        // 清空所有人員
+        function removeMember(idx) {
+            defaultMembers.splice(idx, 1);
+            localStorage.setItem('team_members', JSON.stringify(defaultMembers));
+            renderModalMemberList();
+            renderMemberBadges();
+        }
+
         function clearAllMembers() {
-            if (confirm("確定要清空所有人員清冊嗎？此動作將清除所有名單與請假狀態。")) {
+            if (confirm("確定要清空所有人員名單嗎？")) {
                 defaultMembers = [];
                 memberStatuses = {};
                 localStorage.setItem('team_members', JSON.stringify(defaultMembers));
                 localStorage.setItem('team_member_statuses', JSON.stringify(memberStatuses));
                 renderModalMemberList();
                 renderMemberBadges();
-                showToast("已清空所有人員清冊！");
+                showToast("已清空所有成員清冊");
             }
-        }
-
-        function removeMember(idx) {
-            const removed = defaultMembers[idx];
-            if (removed) {
-                delete memberStatuses[removed];
-                localStorage.setItem('team_member_statuses', JSON.stringify(memberStatuses));
-            }
-            defaultMembers.splice(idx, 1);
-            localStorage.setItem('team_members', JSON.stringify(defaultMembers));
-            renderModalMemberList();
-            renderMemberBadges();
         }
     </script>
 </body>
