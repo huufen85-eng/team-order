@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="h-full bg-slate-100 text-slate-800 font-sans">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>極簡團隊訂餐系統</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* 列印樣式優化 */
+        @media print {
+            body {
+                background-color: white !important;
+                color: black !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only-title {
+                display: block !important;
+            }
+            main {
+                max-width: 100% !important;
+                border: none !important;
+                box-shadow: none !important;
+                background-color: transparent !important;
+                padding: 0 !important;
+            }
+            table {
+                color: black !important;
+            }
+            th, td {
+                border-bottom: 1px solid #ddd !important;
+                color: black !important;
+            }
+            .text-indigo-600, .text-slate-600, .text-slate-700, .text-slate-800 {
+                color: black !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-full flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 bg-slate-100 text-slate-800">
+
+    <!-- Toast 提示訊息 -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-y-[-100px] opacity-0 transition-all duration-300 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm font-medium">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
+        <span id="toast-message">已複製到剪貼簿！</span>
+    </div>
+
+    <!-- 主容器 -->
+    <main class="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl shadow-xl p-6 sm:p-8 space-y-6 my-auto">
+        
+        <!-- 上方大標題與說明 -->
+        <header class="text-center space-y-2">
+            <div class="flex items-center justify-center gap-2">
+                <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+                    團隊跨店家快速訂餐彙整
+                </h1>
+                <span id="cloud-status" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    連線中...
+                </span>
+            </div>
+            <p class="text-sm sm:text-base text-slate-500 no-print">
+                支援多店家分組！貼上團隊訂餐清單，自動依店家歸類品項、統計數量與金額，支援 Firebase 雲端即時同步。
+            </p>
+        </header>
+
+        <!-- 預設人員清冊管理與快捷點餐區塊 -->
+        <section class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 no-print">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span>預設人員清冊 (移至標籤可快捷點餐)</span>
+                </div>
+                <button onclick="toggleMemberModal()" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    管理人員清冊
+                </button>
+            </div>
+
+            <!-- 人員標籤清單 -->
+            <div id="members-list-container" class="flex flex-wrap gap-2 pt-1">
+                <!-- 動態生成的成員標籤 -->
+            </div>
+        </section>
+
+        <!-- 今日開放訂餐店家公告 & 設定區塊 -->
+        <section class="bg-indigo-50/70 border border-indigo-200 rounded-xl p-4 space-y-2.5 no-print">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 text-sm font-semibold text-indigo-900">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                    </svg>
+                    <span>📢 今日開放訂餐店家設定</span>
+                </div>
+                <span class="text-[11px] text-indigo-600">勾選後將於頂端高亮提示</span>
+            </div>
+            <!-- 今日開放店家勾選列 -->
+            <div id="active-stores-selector" class="flex flex-wrap gap-2 pt-1">
+                <!-- 動態生成的勾選開關 -->
+            </div>
+        </section>
+
+        <!-- 店家與菜單管理區塊 -->
+        <section class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 no-print">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-4 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <span>常用店家與菜單快捷庫</span>
+                </div>
+                <button id="toggle-menu-form" class="text-xs text-amber-600 hover:text-amber-700 font-medium transition flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    新增店家菜單
+                </button>
+            </div>
+
+            <!-- 新增店家表單 (預設隱藏) -->
+            <div id="store-form-container" class="hidden bg-white border border-slate-200 p-3 rounded-lg space-y-3 shadow-sm">
+                <div class="flex items-center justify-between gap-2">
+                    <input type="text" id="new-store-name" placeholder="店家名稱 (例如: 50嵐)" class="flex-1 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                    <label class="flex items-center gap-1.5 text-xs text-slate-700 font-medium cursor-pointer bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-200 transition select-none">
+                        <input type="checkbox" id="new-store-is-drink" class="rounded text-amber-600 focus:ring-amber-500 h-3.5 w-3.5">
+                        <span>🥤 註記為飲料店</span>
+                    </label>
+                </div>
+                <textarea id="new-store-menu" rows="3" placeholder="菜單品項 (每行一項：品項 金額，例如：珍珠奶茶 60)" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-y"></textarea>
+                <div class="flex justify-end gap-2">
+                    <button id="save-store-btn" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium">儲存店家</button>
+                </div>
+            </div>
+
+            <!-- 店家與品項快捷按鈕容器 -->
+            <div id="stores-list-container" class="pt-1">
+                <!-- 動態生成的店家菜單 -->
+            </div>
+        </section>
+
+        <!-- 中間資料輸入區域與操作按鈕 -->
+        <section class="space-y-4 no-print">
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center">
+                    <label for="order-input" class="block text-sm font-medium text-slate-700">
+                        訂餐資料輸入 (支援 `# 店家名稱` 分組或每行指定)
+                    </label>
+                    <button id="demo-btn" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline transition">
+                        帶入多店家範例
+                    </button>
+                </div>
+                <textarea 
+                    id="order-input" 
+                    rows="7" 
+                    class="w-full rounded-xl bg-slate-50 border border-slate-300 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition duration-150 resize-y"
+                    placeholder="# 50嵐&#10;小明 珍珠奶茶 60&#10;小華 燕麥紅茶 45&#10;&#10;# 正忠排骨飯&#10;小明 排骨飯 100&#10;小華 雞腿飯 110"></textarea>
+            </div>
+
+            <!-- 主要操作按鈕 -->
+            <button 
+                id="submit-btn"
+                type="button" 
+                class="w-full py-3.5 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-base shadow-md shadow-indigo-600/20 transition-all duration-150 flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                快速彙整與店家分組統計
+            </button>
+        </section>
+
+        <!-- 下方預留空白顯示結果區域 -->
+        <section class="border-t border-slate-200 pt-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-slate-800">彙整結果</h2>
+                <span id="status-badge" class="hidden text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 font-medium border border-slate-200">
+                    尚無資料
+                </span>
+            </div>
+
+            <!-- 全域總計卡片 (預設隱藏) -->
+            <div id="grand-total-card" class="hidden bg-indigo-50/50 border border-indigo-200 rounded-xl p-4 flex flex-wrap justify-between items-center gap-2">
+                <div class="text-slate-700 text-sm font-semibold">全站訂購總計</div>
+                <div class="flex items-center gap-4 text-sm font-bold">
+                    <span id="total-shops-count" class="text-slate-500">店家數: 0</span>
+                    <span id="total-orders-count" class="text-slate-700">總筆數: 0 筆</span>
+                    <span id="grand-total-amount" class="text-indigo-600 font-mono text-xl">總金額: $0</span>
+                </div>
+            </div>
+
+            <!-- 結果顯示框 -->
+            <div 
+                id="result-container" 
+                class="min-h-[160px] rounded-xl bg-slate-50 border border-slate-200 p-5 flex flex-col items-center justify-center text-center text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p class="text-sm">於上方輸入訂餐資料並點擊按鈕，結果將在此處按店家自動分組呈現。</p>
+            </div>
+        </section>
+
+        <!-- 匯出與導出功能區 -->
+        <section id="export-section" class="border-t border-slate-200 pt-6 space-y-3 no-print hidden">
+            <h3 class="text-sm font-semibold text-slate-700">資料導出與分享</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <!-- Firebase SDK 引入 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 已替換為您的專屬 Firebase 專案設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyAocL6E_6DzAlqhPaV9CCOeiSeD4kwP_y0",
+            authDomain: "team-ordering-app.firebaseapp.com",
+            projectId: "team-ordering-app",
+            storageBucket: "team-ordering-app.firebasestorage.app",
+            messagingSenderId: "833310154787",
+            appId: "1:833310154787:web:e42ff9c790f0a520a2d196",
+            measurementId: "G-F0BZPNY4X8"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'team-ordering-app';
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'order_session', 'current');
+
+        let isRemoteUpdate = false;
+
+        // Firebase 匿名認證與即時監聽
+        signInAnonymously(auth).then(() => {
+            const cloudStatus = document.getElementById('cloud-status');
+            if (cloudStatus) {
+                cloudStatus.className = "px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1";
+                cloudStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> 雲端即時同步中`;
+            }
+
+            // 監聽雲端資料變更
+            onSnapshot(docRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    if (data.rawInput !== undefined && !isRemoteUpdate) {
+                        const inputEl = document.getElementById('order-input');
+                        if (inputEl && inputEl.value !== data.rawInput) {
+                            inputEl.value = data.rawInput;
+                            document.getElementById('submit-btn').click();
+                        }
+                    }
+                }
+            }, (error) => {
+                console.error("Firebase 監聽失敗:", error);
+            });
+        }).catch(err => {
+            console.error("Firebase 認證失敗:", err);
+        });
+
+        // 當輸入內容改變時，同步至雲端
+        window.syncOrdersToCloud = function(rawText) {
+            isRemoteUpdate = true;
+            setDoc(docRef, {
+                rawInput: rawText,
+                updatedAt: new Date().toISOString()
+            }, { merge: true }).finally(() => {
+                isRemoteUpdate = false;
+            });
+        };
+    </script>
+
+    <!-- JavaScript 邏輯處理 -->
+    <script>
+        let globalOrders = []; // 儲存 { id, shop, name, item, price, isEditing }
+        let activeStores = ["50嵐", "正忠排骨飯"]; // 今日開放訂餐的店家名單
+        
+        // 預設店家菜單資料庫 (新增 isDrink 欄位)
+        let storeDatabase = [
+            {
+                name: "50嵐",
+                isDrink: true,
+                menu: [
+                    { item: "珍珠奶茶", price: 60 },
+                    { item: "燕麥紅茶", price: 45 },
+                    { item: "四季春茶", price: 35 }
+                ]
+            },
+            {
+                name: "正忠排骨飯",
+                isDrink: false,
+                menu: [
+                    { item: "排骨飯", price: 100 },
+                    { item: "雞腿飯", price: 110 },
+                    { item: "招牌便當", price: 95 }
+                ]
+            }
+        ];
+
+        // 初始化
+        document.addEventListener("DOMContentLoaded", () => {
+            renderActiveStoresSelector();
+            renderStoreDatabase();
+
+            // 切換店家表單
+            const toggleBtn = document.getElementById('toggle-menu-form');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    const form = document.getElementById('store-form-container');
+                    if (form) form.classList.toggle('hidden');
+                });
+            }
+
+            // 儲存新店家/菜單
+            const saveBtn = document.getElementById('save-store-btn');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', () => {
+                    const nameInput = document.getElementById('new-store-name').value.trim();
+                    const isDrinkInput = document.getElementById('new-store-is-drink').checked;
+                    const menuInput = document.getElementById('new-store-menu').value.trim();
+
+                    if (!nameInput) {
+                        showToast("請輸入店家名稱！", true);
+                        return;
+                    }
+
+                    const menuItems = [];
+                    if (menuInput) {
+                        menuInput.split('\n').forEach(line => {
+                            const parts = line.trim().split(/\s+/);
+                            if (parts.length >= 2) {
+                                const price = parseInt(parts[parts.length - 1]) || 0;
+                                const item = parts.slice(0, -1).join(' ');
+                                menuItems.push({ item, price });
+                            } else if (parts.length === 1 && parts[0]) {
+                                menuItems.push({ item: parts[0], price: 0 });
+                            }
+                        });
+                    }
+
+                    // 檢查是否已存在該店家
+                    const existingIndex = storeDatabase.findIndex(s => s.name === nameInput);
+                    if (existingIndex >= 0) {
+                        storeDatabase[existingIndex].menu = menuItems;
+                        storeDatabase[existingIndex].isDrink = isDrinkInput;
+                    } else {
+                        storeDatabase.push({ name: nameInput, isDrink: isDrinkInput, menu: menuItems });
+                        if (!activeStores.includes(nameInput)) {
+                            activeStores.push(nameInput); // 新增店家預設設為開放
+                        }
+                    }
+
+                    document.getElementById('new-store-name').value = '';
+                    document.getElementById('new-store-is-drink').checked = false;
+                    document.getElementById('new-store-menu').value = '';
+                    document.getElementById('store-form-container').classList.add('hidden');
+
+                    renderActiveStoresSelector();
+                    renderStoreDatabase();
+                    showToast(`已成功儲存「${nameInput}」菜單！`);
+                });
+            }
+        });
+
+        // 渲染「今日開放店家」設定區
+        function renderActiveStoresSelector() {
+            const container = document.getElementById('active-stores-selector');
+            if (!container) return;
+
+            if (storeDatabase.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400">尚無店家資料</span>`;
+                return;
+            }
+
+            container.innerHTML = storeDatabase.map(store => {
+                const isOpen = activeStores.includes(store.name);
+                return `
+                    <button 
+                        onclick="toggleActiveStore('${escapeHtml(store.name)}')" 
+                        class="px-2.5 py-1 rounded-lg text-xs font-medium border transition flex items-center gap-1.5 ${isOpen ? 'bg-emerald-100 text-emerald-800 border-emerald-300 shadow-sm' : 'bg-white text-slate-400 border-slate-200 hover:text-slate-600'}">
+                        <span class="w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
+                        <span>${escapeHtml(store.name)}</span>
+                        <span class="text-[10px] opacity-80">${isOpen ? '開放中' : '未開放'}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        // 切換今日開放店家
+        function toggleActiveStore(storeName) {
+            const idx = activeStores.indexOf(storeName);
+            if (idx >= 0) {
+                activeStores.splice(idx, 1);
+            } else {
+                activeStores.push(storeName);
+            }
+            renderActiveStoresSelector();
+            renderStoreDatabase();
+        }
+
+        // 渲染店家與菜單快捷清單
+        function renderStoreDatabase() {
+            const container = document.getElementById('stores-list-container');
+            if (!container) return;
+
+            if (storeDatabase.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400">尚無店家菜單資料，點選右上角新增。</p>`;
+                return;
+            }
+
+            let html = `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">`;
+            storeDatabase.forEach((store, sIdx) => {
+                const isOpen = activeStores.includes(store.name);
+                html += `
+                    <div class="bg-white border ${isOpen ? 'border-indigo-300 ring-1 ring-indigo-200' : 'border-slate-200 opacity-60'} rounded-lg p-3 space-y-2 transition shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold ${isOpen ? 'text-indigo-900' : 'text-slate-500'} flex items-center gap-1.5">
+                                🏪 ${escapeHtml(store.name)}
+                                ${store.isDrink ? '<span class="text-[10px] text-sky-600 bg-sky-50 px-1 py-0.2 rounded border border-sky-200">飲料店</span>' : ''}
+                                ${isOpen ? '<span class="px-1.5 py-0.2 bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] rounded font-medium">今日開放</span>' : '<span class="text-[10px] text-slate-400">(未開放)</span>'}
+                            </span>
+                            <div class="space-x-2">
+                                <button onclick="insertStoreHeader('${escapeHtml(store.name)}')" class="text-[11px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 transition font-medium">
+                                    帶入點餐
+                                </button>
+                                <button onclick="deleteStoreFromDb(${sIdx})" class="text-[11px] text-rose-600 hover:text-rose-700 transition">
+                                    刪除
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5">
+                `;
+
+                if (store.menu.length === 0) {
+                    html += `<span class="text-[11px] text-slate-400">尚無菜單品項</span>`;
+                } else {
+                    store.menu.forEach(m => {
+                        html += `
+                            <button onclick="appendOrderItem('${escapeHtml(store.name)}', '${escapeHtml(m.item)}', ${m.price})" class="text-[11px] bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-2 py-1 rounded transition flex items-center gap-1">
+                                <span>${escapeHtml(m.item)}</span>
+                                <span class="text-amber-600 font-mono text-[10px] font-bold">$${m.price}</span>
+                            </button>
+                        `;
+                    });
+                }
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        // 刪除店家菜單設定
+        function deleteStoreFromDb(index) {
+            const storeName = storeDatabase[index]?.name;
+            if (storeName) {
+                const aIdx = activeStores.indexOf(storeName);
+                if (aIdx >= 0) activeStores.splice(aIdx, 1);
+            }
+            storeDatabase.splice(index, 1);
+            renderActiveStoresSelector();
+            renderStoreDatabase();
+        }
+
+        // 點擊帶入店家標號至 Textarea
+        function insertStoreHeader(storeName) {
+            const textarea = document.getElementById('order-input');
+            const currentVal = textarea.value.trim();
+            const newHeader = `# ${storeName}\n`;
+            
+            if (!currentVal) {
+                textarea.value = newHeader;
+            } else {
+                textarea.value = `${currentVal}\n\n${newHeader}`;
+            }
+            textarea.focus();
+        }
+
+        // 點擊品項快速加入文字輸入框
+        function appendOrderItem(storeName, item, price) {
+            const textarea = document.getElementById('order-input');
+            let content = textarea.value;
+
+            // 若目前內容中未包含該店家標籤，自動補上
+            if (!content.includes(`# ${storeName}`)) {
+                if (content.trim()) content += `\n\n`;
+                content += `# ${storeName}\n`;
+            }
+
+            content += `姓名 ${item} ${price}\n`;
+            textarea.value = content;
+            showToast(`已加入「${item}」！請修改「姓名」`);
+        }
+
+        // 帶入多店家範例資料
+        document.getElementById('demo-btn').addEventListener('click', function() {
+            document.getElementById('order-input').value = `# 50嵐\n小明 珍珠奶茶 60\n小華 燕麥紅茶 45\n小美 珍珠奶茶 60\n\n# 正忠排骨飯\n小明 排骨飯 100\n小華 雞腿飯 110\n阿強 招牌便當 95\n\n# 摩斯漢堡\n小美 摩斯漢堡套餐 150`;
+        });
+
+        // 解析與提交按鈕監聽
+        document.getElementById('submit-btn').addEventListener('click', function() {
+            const input = document.getElementById('order-input').value.trim();
+            const resultContainer = document.getElementById('result-container');
+            const badge = document.getElementById('status-badge');
+            const exportSection = document.getElementById('export-section');
+            const grandTotalCard = document.getElementById('grand-total-card');
+
+            if (!input) {
+                resultContainer.className = "min-h-[160px] rounded-xl bg-slate-950/50 border border-slate-800/80 p-5 flex flex-col items-center justify-center text-center text-slate-500";
+                resultContainer.innerHTML = `<p class="text-amber-400 text-sm">請先在上方輸入框輸入訂餐資料！</p>`;
+                badge.classList.add('hidden');
+                exportSection.classList.add('hidden');
+                grandTotalCard.classList.add('hidden');
+                return;
+            }
+
+            const lines = input.split('\n');
+            globalOrders = [];
+            let currentShop = "預設店家";
+
+            lines.forEach((line, index) => {
+                const trimmed = line.trim();
+                if (!trimmed) return;
+
+                // 判斷是否為店家標頭 (例如 # 50嵐, [50嵐], 店家: 50嵐, === 50嵐 ===)
+                const headerMatch = trimmed.match(/^(?:#|\[|===|店家[:：])\s*([^\]=#]+)\s*(?:\]|===)?$/);
+                if (headerMatch) {
+                    currentShop = headerMatch[1].trim();
+                    return;
+                }
+
+                const parts = trimmed.split(/\s+/);
+                if (parts.length >= 3) {
+                    const lastPart = parts[parts.length - 1];
+                    const isPrice = /^\d+$/.test(lastPart);
+                    
+                    if (isPrice) {
+                        const price = parseInt(lastPart);
+                        const name = parts[0];
+                        const item = parts.slice(1, -1).join(' ');
+                        globalOrders.push({ id: index, shop: currentShop, name, item, price, isEditing: false });
+                    } else {
+                        const name = parts[0];
+                        const item = parts.slice(1).join(' ');
+                        const autoPrice = findPriceFromDb(currentShop, item);
+                        globalOrders.push({ id: index, shop: currentShop, name, item, price: autoPrice, isEditing: false });
+                    }
+                } else if (parts.length === 2) {
+                    const name = parts[0];
+                    const item = parts[1];
+                    const autoPrice = findPriceFromDb(currentShop, item);
+                    globalOrders.push({ id: index, shop: currentShop, name, item, price: autoPrice, isEditing: false });
+                }
+            });
+
+            if (globalOrders.length === 0) {
+                resultContainer.className = "min-h-[160px] rounded-xl bg-slate-950/50 border border-slate-800/80 p-5 flex flex-col items-center justify-center text-center text-slate-500";
+                resultContainer.innerHTML = `<p class="text-red-400 text-sm">格式不符，請確認每筆資料包含姓名與餐點資訊。</p>`;
+                badge.classList.add('hidden');
+                exportSection.classList.add('hidden');
+                grandTotalCard.classList.add('hidden');
+                return;
+            }
+
+            renderTable();
+        });
+
+        // 自動對照菜單資料庫取得價格
+        function findPriceFromDb(shopName, itemName) {
+            const store = storeDatabase.find(s => s.name === shopName);
+            if (store) {
+                const menuItem = store.menu.find(m => m.item === itemName);
+                if (menuItem) return menuItem.price;
+            }
+            return 0;
+        }
+
+        // 依店家分組渲染表格畫面
+        function renderTable() {
+            const resultContainer = document.getElementById('result-container');
+            const badge = document.getElementById('status-badge');
+            const exportSection = document.getElementById('export-section');
+            const grandTotalCard = document.getElementById('grand-total-card');
+
+            if (globalOrders.length === 0) {
+                if (resultContainer) {
+                    resultContainer.className = "min-h-[160px] rounded-xl bg-slate-50 border border-slate-200 p-5 flex flex-col items-center justify-center text-center text-slate-400";
+                    resultContainer.innerHTML = `<p class="text-slate-400 text-sm">目前無訂單資料。</p>`;
+                }
+                if (badge) badge.classList.add('hidden');
+                if (exportSection) exportSection.classList.add('hidden');
+                if (grandTotalCard) grandTotalCard.classList.add('hidden');
+                syncToTextarea();
+                return;
+            }
+
+            // 按店家進行資料分組 (Group by shop)
+            const groupedShops = {};
+            let grandTotalAmount = 0;
+
+            globalOrders.forEach(o => {
+                if (!groupedShops[o.shop]) {
+                    groupedShops[o.shop] = [];
+                }
+                groupedShops[o.shop].push(o);
+                grandTotalAmount += Number(o.price) || 0;
+            });
+
+            const shopNames = Object.keys(groupedShops);
+
+            // 更新全域總計列
+            const shopsCountEl = document.getElementById('total-shops-count');
+            const ordersCountEl = document.getElementById('total-orders-count');
+            const grandTotalEl = document.getElementById('grand-total-amount');
+
+            if (shopsCountEl) shopsCountEl.textContent = `店家數: ${shopNames.length}`;
+            if (ordersCountEl) ordersCountEl.textContent = `總筆數: ${globalOrders.length} 筆`;
+            if (grandTotalEl) grandTotalEl.textContent = `總金額: $${grandTotalAmount}`;
+            if (grandTotalCard) grandTotalCard.classList.remove('hidden');
+
+            let html = `<div class="w-full space-y-6">`;
+
+            shopNames.forEach((shop, shopIdx) => {
+                const orders = groupedShops[shop];
+                let shopSubtotal = 0;
+
+                // 統計該店家點餐品項數量
+                const itemSummary = {};
+                orders.forEach(o => {
+                    shopSubtotal += Number(o.price) || 0;
+                    if (!itemSummary[o.item]) {
+                        itemSummary[o.item] = { count: 0, price: o.price };
+                    }
+                    itemSummary[o.item].count += 1;
+                });
+
+                html += `
+                    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                        <!-- 店家卡片標頭 -->
+                        <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-4 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                </span>
+                                <h3 class="font-bold text-slate-800 text-base">${escapeHtml(shop)}</h3>
+                                <span class="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-medium">${orders.length} 筆</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs text-slate-500">店家小計：</span>
+                                <span class="font-mono font-bold text-amber-600 text-base">$${shopSubtotal}</span>
+                            </div>
+                        </div>
+
+                        <!-- 該店家菜色點餐統計區 (方便向店家下單) -->
+                        <div class="bg-slate-50/50 p-3 px-4 border-b border-slate-200">
+                            <div class="text-xs font-semibold text-slate-500 mb-1.5 flex items-center gap-1">
+                                <span>🍱 店家下單餐點彙整：</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2 text-xs">
+                `;
+
+                Object.keys(itemSummary).forEach(itemName => {
+                    const info = itemSummary[itemName];
+                    const sub = info.price * info.count;
+                    html += `
+                        <span class="bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-slate-700 shadow-2xs">
+                            <strong class="text-indigo-700">${escapeHtml(itemName)}</strong> 
+                            <span class="text-amber-600 font-bold">x${info.count}</span>
+                            ${info.price > 0 ? `<span class="text-slate-400 font-mono">($${sub})</span>` : ''}
+                        </span>
+                    `;
+                });
+
+                html += `
+                            </div>
+                        </div>
+
+                        <!-- 個人訂購明細表格 -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left text-slate-700">
+                                <thead class="text-xs text-slate-500 uppercase bg-slate-100 border-b border-slate-200">
+                                    <tr>
+                                        <th class="px-3 py-2">訂購人</th>
+                                        <th class="px-3 py-2">餐點名稱</th>
+                                        <th class="px-3 py-2 text-right">金額</th>
+                                        <th class="px-3 py-2 text-center w-28 no-print">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                `;
+
+                orders.forEach(o => {
+                    const globalIdx = globalOrders.findIndex(item => item.id === o.id);
+
+                    if (o.isEditing) {
+                        html += `
+                            <tr class="bg-indigo-50/30">
+                                <td class="px-2 py-2">
+                                    <input type="text" id="edit-shop-${globalIdx}" value="${escapeHtml(o.shop)}" placeholder="店家" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 mb-1">
+                                    <input type="text" id="edit-name-${globalIdx}" value="${escapeHtml(o.name)}" placeholder="訂購人" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-800 focus:outline-none focus:border-indigo-500">
+                                </td>
+                                <td class="px-2 py-2">
+                                    <input type="text" id="edit-item-${globalIdx}" value="${escapeHtml(o.item)}" placeholder="餐點" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-800 focus:outline-none focus:border-indigo-500">
+                                </td>
+                                <td class="px-2 py-2 text-right">
+                                    <input type="number" id="edit-price-${globalIdx}" value="${o.price}" class="w-20 bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-800 text-right focus:outline-none focus:border-indigo-500">
+                                </td>
+                                <td class="px-2 py-2 text-center space-x-1 no-print">
+                                    <button onclick="saveOrder(${globalIdx})" class="text-xs px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded transition">儲存</button>
+                                    <button onclick="cancelEdit(${globalIdx})" class="text-xs px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded transition">取消</button>
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        html += `
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="px-3 py-2 font-medium text-slate-900">${escapeHtml(o.name)}</td>
+                                <td class="px-3 py-2 text-slate-700">${escapeHtml(o.item)}</td>
+                                <td class="px-3 py-2 text-right font-mono text-slate-800">${o.price ? `$${o.price}` : '$0'}</td>
+                                <td class="px-3 py-2 text-center space-x-2 no-print">
+                                    <button onclick="enableEdit(${globalIdx})" class="text-xs text-indigo-600 hover:text-indigo-800 transition font-medium">修改</button>
+                                    <button onclick="deleteOrder(${globalIdx})" class="text-xs text-rose-600 hover:text-rose-800 transition font-medium">刪除</button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+
+            if (resultContainer) {
+                resultContainer.className = "min-h-[160px] rounded-xl bg-slate-50 border border-slate-200 p-2 sm:p-4";
+                resultContainer.innerHTML = html;
+            }
+
+            if (badge) {
+                badge.textContent = "解析完成";
+                badge.className = "text-xs px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-medium border border-emerald-200";
+            }
+            
+            if (exportSection) exportSection.classList.remove('hidden');
+            syncToTextarea();
+        }
+
+        // 開啟編輯
+        function enableEdit(index) {
+            globalOrders[index].isEditing = true;
+            renderTable();
+        }
+
+        // 取消編輯
+        function cancelEdit(index) {
+            globalOrders[index].isEditing = false;
+            renderTable();
+        }
+
+        // 儲存修改
+        function saveOrder(index) {
+            const shop = document.getElementById(`edit-shop-${index}`).value.trim() || "預設店家";
+            const name = document.getElementById(`edit-name-${index}`).value.trim();
+            const item = document.getElementById(`edit-item-${index}`).value.trim();
+            const price = parseInt(document.getElementById(`edit-price-${index}`).value) || 0;
+
+            if (!name || !item) {
+                showToast("姓名與餐點名稱不能為空！", true);
+                return;
+            }
+
+            globalOrders[index] = { ...globalOrders[index], shop, name, item, price, isEditing: false };
+            renderTable();
+        }
+
+        // 刪除訂單
+        function deleteOrder(index) {
+            globalOrders.splice(index, 1);
+            renderTable();
+        }
+
+        // 反向同步至上方 Textarea
+        function syncToTextarea() {
+            let currentShop = "";
+            const lines = [];
+
+            globalOrders.forEach(o => {
+                if (o.shop !== currentShop) {
+                    currentShop = o.shop;
+                    lines.push(`\n# ${currentShop}`);
+                }
+                lines.push(`${o.name} ${o.item} ${o.price}`);
+            });
+
+            document.getElementById('order-input').value = lines.join('\n').trim();
+        }
+
+        // 複製格式 1：按店家分組的群組對帳明細
+        function copyGroupText() {
+            if (globalOrders.length === 0) return;
+            
+            const groupedShops = {};
+            let grandTotal = 0;
+
+            globalOrders.forEach(o => {
+                if (!groupedShops[o.shop]) groupedShops[o.shop] = [];
+                groupedShops[o.shop].push(o);
+                grandTotal += o.price;
+            });
+
+            let text = "📋 【團隊跨店家訂餐明細】\n";
+
+            Object.keys(groupedShops).forEach(shop => {
+                const orders = groupedShops[shop];
+                let subtotal = 0;
+                text += `\n🏪 【${shop}】\n──────────────────\n`;
+                orders.forEach((o, i) => {
+                    text += `${i + 1}. ${o.name} - ${o.item} ($${o.price})\n`;
+                    subtotal += o.price;
+                });
+                text += `小計：${orders.length} 筆 / $${subtotal} 元\n`;
+            });
+
+            text += `\n==================\n`;
+            text += `💰 全站總計：${globalOrders.length} 筆\n`;
+            text += `💵 總金額：$${grandTotal} 元`;
+
+            copyToClipboard(text, "已複製多店家對帳明細！");
+        }
+
+        // 匯出格式 2：按店家分組的店家點餐統計 Excel (CSV 格式，Excel 可直接開啟)
+        function exportShopSummaryCSV() {
+            if (globalOrders.length === 0) return;
+
+            const groupedShops = {};
+            let grandTotalCount = 0;
+            let grandTotalAmount = 0;
+
+            globalOrders.forEach(o => {
+                if (!groupedShops[o.shop]) groupedShops[o.shop] = [];
+                groupedShops[o.shop].push(o);
+                grandTotalCount += 1;
+                grandTotalAmount += o.price;
+            });
+
+            let csvContent = "\uFEFF"; // UTF-8 BOM 避免 Excel 開啟亂碼
+            csvContent += "店家名稱,點餐品項,數量,單價,小計金額\n";
+
+            Object.keys(groupedShops).forEach(shop => {
+                const orders = groupedShops[shop];
+                const itemSummary = {};
+                let shopSubtotalCount = 0;
+                let shopSubtotalAmount = 0;
+
+                orders.forEach(o => {
+                    shopSubtotalCount += 1;
+                    shopSubtotalAmount += o.price;
+
+                    if (!itemSummary[o.item]) {
+                        itemSummary[o.item] = { count: 0, unitPrice: o.price };
+                    }
+                    itemSummary[o.item].count += 1;
+                });
+
+                // 店家分區資料
+                Object.keys(itemSummary).forEach(itemName => {
+                    const info = itemSummary[itemName];
+                    const subtotal = info.unitPrice * info.count;
+                    const escapedShop = `"${shop.replace(/"/g, '""')}"`;
+                    const escapedItem = `"${itemName.replace(/"/g, '""')}"`;
+                    csvContent += `${escapedShop},${escapedItem},${info.count},${info.unitPrice},${subtotal}\n`;
+                });
+
+                // 該店家小計列
+                const escapedShopName = `"${shop.replace(/"/g, '""')} (小計)"`;
+                csvContent += `${escapedShopName},"—",${shopSubtotalCount},"—",${shopSubtotalAmount}\n\n`;
+            });
+
+            // 全站總計列
+            csvContent += `"全站總計","—",${grandTotalCount},"—",${grandTotalAmount}\n`;
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            
+            const today = new Date().toISOString().split('T')[0];
+            link.setAttribute("href", url);
+            link.setAttribute("download", `店家點餐下單彙整表_${today}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast("已成功匯出各店家點餐統計 Excel (CSV) 檔案！");
+        }
+
+        // 匯出 CSV：包含「個人個人明細」欄位
+        function exportCSV() {
+            if (globalOrders.length === 0) return;
+
+            let csvContent = "\uFEFF"; // 加入 UTF-8 BOM 防中文亂碼
+            csvContent += "店家名稱,訂購人,餐點名稱,單價,數量,小計\n";
+
+            // 先按店家統計數量與細項
+            globalOrders.forEach(o => {
+                const shop = `"${o.shop.replace(/"/g, '""')}"`;
+                const name = `"${o.name.replace(/"/g, '""')}"`;
+                const item = `"${o.item.replace(/"/g, '""')}"`;
+                csvContent += `${shop},${name},${item},${o.price},1,${o.price}\n`;
+            });
+
+            const totalAmount = globalOrders.reduce((sum, o) => sum + o.price, 0);
+            csvContent += `\n"全站總計","","","","${globalOrders.length} 筆","${totalAmount}"\n`;
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            
+            const today = new Date().toISOString().split('T')[0];
+            link.setAttribute("href", url);
+            link.setAttribute("download", `團隊跨店家訂餐明細_${today}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        // 反向同步至上方 Textarea 並同步至 Firebase 雲端
+        function syncToTextarea() {
+            let currentShop = "";
+            const lines = [];
+
+            globalOrders.forEach(o => {
+                if (o.shop !== currentShop) {
+                    currentShop = o.shop;
+                    lines.push(`\n# ${currentShop}`);
+                }
+                lines.push(`${o.name} ${o.item} ${o.price}`);
+            });
+
+            const newContent = lines.join('\n').trim();
+            document.getElementById('order-input').value = newContent;
+
+            if (window.syncOrdersToCloud) {
+                window.syncOrdersToCloud(newContent);
+            }
+        }
+
+        function fallbackCopy(text, successMsg) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast(successMsg);
+            } catch (err) {
+                showToast("複製失敗，請手動複製", true);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Toast 提示框
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+
+            toastMsg.textContent = msg;
+            if (isError) {
+                toast.className = "fixed top-5 right-5 z-50 transform transition-all duration-300 bg-rose-600 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm font-medium opacity-100 translate-y-0";
+            } else {
+                toast.className = "fixed top-5 right-5 z-50 transform transition-all duration-300 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm font-medium opacity-100 translate-y-0";
+            }
+
+            setTimeout(() => {
+                toast.className = "fixed top-5 right-5 z-50 transform translate-y-[-100px] opacity-0 transition-all duration-300 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm font-medium";
+            }, 2500);
+        }
+
+        // HTML 轉義字元
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+
+    <!-- 管理人員清冊 Modal -->
+    <div id="member-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                <h3 class="font-bold text-slate-800 text-base">管理人員清冊</h3>
+                <button onclick="toggleMemberModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+            </div>
+            
+            <div class="flex gap-2">
+                <input type="text" id="new-member-name" placeholder="輸入成員姓名 (例如: 美環)" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500">
+                <button onclick="addMember()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2 rounded-xl transition font-medium">新增</button>
+            </div>
+
+            <div id="modal-member-list" class="max-h-60 overflow-y-auto space-y-2 pr-1">
+                <!-- 人員編輯列表 -->
+            </div>
+
+            <div class="pt-2 flex justify-end">
+                <button onclick="toggleMemberModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-xl transition font-medium">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快捷點餐彈出菜單 Popover -->
+    <div id="quick-order-popover" class="fixed z-50 hidden bg-white border border-slate-200 shadow-2xl rounded-xl p-3 w-80 space-y-3 text-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-1.5">
+            <span id="popover-member-name" class="font-bold text-indigo-700">為 小明 點餐：</span>
+            <button onclick="hideQuickOrderPopover()" class="text-slate-400 hover:text-slate-600 text-sm font-bold">&times;</button>
+        </div>
+
+        <!-- 甜度冰塊選擇器 (僅飲料類品項點擊時顯示) -->
+        <div id="drink-options-selector" class="hidden bg-indigo-50/70 border border-indigo-200 p-2.5 rounded-lg space-y-2">
+            <div class="flex justify-between items-center">
+                <span id="selected-drink-name" class="font-bold text-indigo-900 text-xs">選擇客製化甜度冰塊：</span>
+                <button onclick="closeDrinkSelector()" class="text-[10px] text-slate-500 hover:text-slate-700 underline">返回菜單</button>
+            </div>
+            
+            <!-- 甜度選擇 -->
+            <div class="space-y-1">
+                <div class="text-[10px] font-semibold text-slate-500">甜度：</div>
+                <div id="sweetness-options" class="flex flex-wrap gap-1">
+                    <button type="button" onclick="selectOption('sweet', '無糖')" class="opt-sweet text-[10px] px-2 py-0.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-indigo-100">無糖</button>
+                    <button type="button" onclick="selectOption('sweet', '微糖')" class="opt-sweet text-[10px] px-2 py-0.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-indigo-100">微糖(3分)</button>
+                    <button type="button" onclick="selectOption('sweet', '半糖')" class="opt-sweet text-[10px] px-2 py-0.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-indigo-100">半糖(5分)</button>
+                    <button type="button" onclick="selectOption('sweet', '少糖')" class="opt-sweet text-[10px] px-2 py-0.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-indigo-100">少糖(7分)</button>
+                    <button type="button" onclick="selectOption('sweet', '正常糖')" class="opt-sweet text-[10px] px-2 py-0.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-indigo-100">正常糖</button>
+                </div>
+            </div>
+
+            <!-- 冰塊選擇 -->
+            <div class="space-y-1">
+                <div class="text-[10px] font-semibold text-slate-500">冰塊：</div>
+                <div id="ice-options" class="flex flex-wrap gap-1">
+                    <button type="button" onclick="selectOption('ice', '去冰')" class="opt-ice text-[10px] px-2 py-0.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-indigo-100">去冰</button>
+                    <button type="button" onclick="selectOption('ice', '微冰')" class="opt-ice text-[10px] px-2 py-0.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-indigo-100">微冰</button>
+                    <button type="button" onclick="selectOption('ice', '少冰')" class="opt-ice text-[10px] px-2 py-0.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-indigo-100">少冰</button>
+                    <button type="button" onclick="selectOption('ice', '正常冰')" class="opt-ice text-[10px] px-2 py-0.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-indigo-100">正常冰</button>
+                    <button type="button" onclick="selectOption('ice', '溫熱')" class="opt-ice text-[10px] px-2 py-0.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-indigo-100">溫熱</button>
+                </div>
+            </div>
+
+            <!-- 確認加入按鈕 -->
+            <button onclick="confirmCustomDrinkOrder()" class="w-full py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-medium text-xs shadow-xs mt-1 transition">
+                加入訂單
+            </button>
+        </div>
+
+        <div id="popover-menu-items" class="max-h-56 overflow-y-auto space-y-2 pr-1">
+            <!-- 動態繪製店家與菜色 -->
+        </div>
+    </div>
+
+    <script>
+        // 人員清冊與快捷點餐邏輯
+        let defaultMembers = JSON.parse(localStorage.getItem('team_members')) || ["小明", "小華", "阿強", "美環", "大雄"];
+
+        let currentHoverMember = "";
+        let pendingDrinkOrder = null; // 暫存點選的飲料資品項 { shop, name, item, price, sweet, ice }
+
+        // 初始化人員標籤
+        function renderMemberBadges() {
+            const container = document.getElementById('members-list-container');
+            if (defaultMembers.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400">目前尚無預設人員，請點擊右上角「管理人員清冊」新增。</span>`;
+                return;
+            }
+
+            container.innerHTML = defaultMembers.map(member => `
+                <div class="relative group inline-block">
+                    <button 
+                        onmouseenter="showQuickOrderPopover(event, '${escapeHtml(member)}')"
+                        onclick="showQuickOrderPopover(event, '${escapeHtml(member)}')"
+                        class="px-3 py-1.5 rounded-lg bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-slate-700 text-xs font-medium transition flex items-center gap-1.5 shadow-2xs">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span>${escapeHtml(member)}</span>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // 顯示快捷點餐 Popover
+        function showQuickOrderPopover(event, memberName) {
+            currentHoverMember = memberName;
+            closeDrinkSelector();
+
+            const popover = document.getElementById('quick-order-popover');
+            const nameEl = document.getElementById('popover-member-name');
+            const itemsEl = document.getElementById('popover-menu-items');
+
+            nameEl.textContent = `為 【${memberName}】 點餐：`;
+
+            if (storeDatabase.length === 0) {
+                itemsEl.innerHTML = `<div class="text-[11px] text-slate-400 p-2">尚無店家菜單，請先至下方新增店家。</div>`;
+            } else {
+                let html = "";
+                storeDatabase.forEach(store => {
+                    const isOpen = activeStores.includes(store.name);
+                    html += `
+                        <div class="space-y-1 ${isOpen ? '' : 'opacity-40'}">
+                            <div class="text-[10px] font-bold text-slate-600 bg-slate-50 px-2 py-0.5 rounded flex justify-between items-center border border-slate-100">
+                                <span>🏪 ${escapeHtml(store.name)}</span>
+                                ${isOpen ? '<span class="text-emerald-600 text-[9px] font-semibold">今日開放</span>' : '<span class="text-rose-500 font-bold text-[9px]">🚫 未開放</span>'}
+                            </div>
+                    `;
+
+                    if (store.menu.length === 0) {
+                        html += `<div class="text-[10px] text-slate-400 px-2">無品項</div>`;
+                    } else {
+                        store.menu.forEach(m => {
+                            if (isOpen) {
+                                html += `
+                                    <button 
+                                        onclick="handleItemClick('${escapeHtml(store.name)}', '${escapeHtml(memberName)}', '${escapeHtml(m.item)}', ${m.price})"
+                                        class="w-full text-left p-1.5 rounded hover:bg-indigo-50 flex justify-between items-center transition group cursor-pointer">
+                                        <span class="text-slate-700 group-hover:text-indigo-700">${escapeHtml(m.item)}</span>
+                                        <span class="font-mono text-amber-600 font-semibold text-[11px]">$${m.price}</span>
+                                    </button>
+                                `;
+                            } else {
+                                html += `
+                                    <div 
+                                        title="該店家今日未開放訂餐"
+                                        class="w-full text-left p-1.5 rounded flex justify-between items-center text-slate-400 cursor-not-allowed select-none bg-slate-50/50">
+                                        <span class="line-through">${escapeHtml(m.item)}</span>
+                                        <span class="font-mono text-[11px] text-slate-300">$${m.price}</span>
+                                    </div>
+                                `;
+                            }
+                        });
+                    }
+
+                    html += `</div>`;
+                });
+                itemsEl.innerHTML = html;
+            }
+
+            // 定位 Popover
+            const rect = event.currentTarget.getBoundingClientRect();
+            popover.style.top = `${rect.bottom + window.scrollY + 6}px`;
+            popover.style.left = `${Math.min(rect.left + window.scrollX, window.innerWidth - 320)}px`;
+            popover.classList.remove('hidden');
+        }
+
+        // 判斷點擊的品項是否需要選擇甜度冰塊
+        function handleItemClick(shop, name, item, price) {
+            // 優先檢查店家資料庫是否有明確註記為飲料店 (isDrink)
+            const store = storeDatabase.find(s => s.name === shop);
+            const isDrinkStore = store && store.isDrink;
+
+            // 雙重判斷：若店家標記為飲料店，或店家/品項名稱包含常見飲料關鍵字
+            const isDrink = isDrinkStore || /茶|奶|飲|咖啡|汁|冰|水|嵐|麻古|可不可|迷客夏|清心|珍煮丹|五桐號/i.test(shop) || /茶|奶|咖啡|汁|飲|冰|露|拿鐵|美式/i.test(item);
+
+            if (isDrink) {
+                openDrinkSelector(shop, name, item, price);
+            } else {
+                appendQuickOrder(shop, name, item, price);
+            }
+        }
+
+        // 打開甜度冰塊選擇器
+        function openDrinkSelector(shop, name, item, price) {
+            pendingDrinkOrder = { shop, name, item, price, sweet: "微糖", ice: "微冰" };
+
+            document.getElementById('selected-drink-name').textContent = `「${item}」客製選單：`;
+            document.getElementById('drink-options-selector').classList.remove('hidden');
+            document.getElementById('popover-menu-items').classList.add('hidden');
+
+            // 預設高亮微糖、微冰
+            updateOptionButtons('sweet', '微糖');
+            updateOptionButtons('ice', '微冰');
+        }
+
+        function closeDrinkSelector() {
+            pendingDrinkOrder = null;
+            document.getElementById('drink-options-selector').classList.add('hidden');
+            document.getElementById('popover-menu-items').classList.remove('hidden');
+        }
+
+        function hideQuickOrderPopover() {
+            document.getElementById('quick-order-popover').classList.add('hidden');
+            closeDrinkSelector();
+        }
+
+        // 選取甜度冰塊按鈕
+        function selectOption(type, value) {
+            if (!pendingDrinkOrder) return;
+            pendingDrinkOrder[type] = value;
+            updateOptionButtons(type, value);
+        }
+
+        function updateOptionButtons(type, value) {
+            const selector = type === 'sweet' ? '.opt-sweet' : '.opt-ice';
+            document.querySelectorAll(selector).forEach(btn => {
+                if (btn.textContent.includes(value)) {
+                    btn.className = `${selector.replace('.', '')} text-[10px] px-2 py-0.5 rounded border border-indigo-500 bg-indigo-600 text-white font-medium`;
+                } else {
+                    btn.className = `${selector.replace('.', '')} text-[10px] px-2 py-0.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-indigo-100`;
+                }
+            });
+        }
+
+        // 確認加入含甜度冰塊的飲料
+        function confirmCustomDrinkOrder() {
+            if (!pendingDrinkOrder) return;
+            const { shop, name, item, price, sweet, ice } = pendingDrinkOrder;
+            const customItem = `${item}(${sweet}/${ice})`;
+
+            appendQuickOrder(shop, name, customItem, price);
+            hideQuickOrderPopover();
+        }
+
+        // 快速點擊將訂單追加至 Textarea
+        function appendQuickOrder(shop, name, item, price) {
+            const textarea = document.getElementById('order-input');
+            let content = textarea.value.trim();
+
+            // 檢查是否已存在該店家標題
+            const shopHeader = `# ${shop}`;
+            if (!content.includes(shopHeader)) {
+                content += (content ? '\n\n' : '') + `${shopHeader}\n${name} ${item} ${price}`;
+            } else {
+                const lines = content.split('\n');
+                const newLines = [];
+                let added = false;
+
+                for (let i = 0; i < lines.length; i++) {
+                    newLines.push(lines[i]);
+                    if (lines[i].trim() === shopHeader && !added) {
+                        newLines.push(`${name} ${item} ${price}`);
+                        added = true;
+                    }
+                }
+                content = newLines.join('\n');
+            }
+
+            textarea.value = content;
+            showToast(`已新增：${name} - ${item} ($${price})`);
+            hideQuickOrderPopover();
+        }
+
+        // 關閉 Popover
+        document.addEventListener('click', function(e) {
+            const popover = document.getElementById('quick-order-popover');
+            const container = document.getElementById('members-list-container');
+            if (popover && !popover.contains(e.target) && container && !container.contains(e.target)) {
+                hideQuickOrderPopover();
+            }
+        });
+
+        // 人員 Modal 控制
+        function toggleMemberModal() {
+            const modal = document.getElementById('member-modal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                renderModalMemberList();
+            }
+        }
+
+        function renderModalMemberList() {
+            const container = document.getElementById('modal-member-list');
+            container.innerHTML = defaultMembers.map((m, idx) => `
+                <div class="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <span class="text-slate-800 font-medium">${escapeHtml(m)}</span>
+                    <button onclick="removeMember(${idx})" class="text-rose-600 hover:text-rose-800">刪除</button>
+                </div>
+            `).join('');
+        }
+
+        function addMember() {
+            const input = document.getElementById('new-member-name');
+            const name = input.value.trim();
+            if (name) {
+                defaultMembers.push(name);
+                localStorage.setItem('team_members', JSON.stringify(defaultMembers));
+                input.value = '';
+                renderModalMemberList();
+                renderMemberBadges();
+            }
+        }
+
+        function removeMember(idx) {
+            defaultMembers.splice(idx, 1);
+            localStorage.setItem('team_members', JSON.stringify(defaultMembers));
+            renderModalMemberList();
+            renderMemberBadges();
+        }
+
+        // 頁面載入初始化人員標籤
+        window.addEventListener('DOMContentLoaded', () => {
+            renderMemberBadges();
+        });
+    </script>
+</body>
+</html>
