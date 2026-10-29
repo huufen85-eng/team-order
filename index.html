@@ -1367,10 +1367,11 @@
             <button type="button" onclick="hideQuickOrderPopover()" class="text-slate-400 hover:text-slate-600 text-sm font-bold">&times;</button>
         </div>
 
+        <!-- 客製化甜度冰塊選單 (預設隱藏，僅當點擊飲料時展開) -->
         <div id="drink-options-selector" class="hidden bg-indigo-50/70 border border-indigo-200 p-2.5 rounded-lg space-y-2">
             <div class="flex justify-between items-center">
                 <span id="selected-drink-name" class="font-bold text-indigo-900 text-xs">選擇客製化甜度冰塊：</span>
-                <button type="button" onclick="closeDrinkSelector()" class="text-[10px] text-slate-500 hover:text-slate-700 underline">返回菜單</button>
+                <button type="button" onclick="closeDrinkSelector()" class="text-[10px] text-slate-500 hover:text-slate-700 underline">← 返回菜單</button>
             </div>
             
             <div class="space-y-1">
@@ -1409,9 +1410,25 @@
         let currentHoverMember = "";
         let pendingDrinkOrder = null; 
 
+        function handleMemberClick(event, memberName) {
+            if (event) event.stopPropagation();
+            const st = memberStatuses[memberName] || 'eat';
+            if (st === 'leave' || st === 'none') {
+                const action = st === 'leave' ? '請假中' : '註記不吃便當';
+                if (confirm(`【${memberName}】目前狀態為「${action}」，是否要取消該狀態並進行點餐？`)) {
+                    setMemberStatus(memberName, 'eat');
+                    showQuickOrderPopover(event, memberName);
+                }
+            } else {
+                showQuickOrderPopover(event, memberName);
+            }
+        }
+
         function showQuickOrderPopover(event, memberName) {
             if (event) event.stopPropagation();
             currentHoverMember = memberName;
+            
+            // 開啟視窗時，強制切換回菜單頁面，隱藏飲料頁面
             closeDrinkSelector();
 
             const popover = document.getElementById('quick-order-popover');
@@ -1466,7 +1483,7 @@
                 itemsEl.innerHTML = html;
             }
 
-            const target = event ? event.currentTarget : document.body;
+            const target = (event && event.currentTarget) ? event.currentTarget : document.body;
             const rect = target.getBoundingClientRect();
             
             popover.classList.remove('hidden');
@@ -1508,8 +1525,11 @@
 
         function closeDrinkSelector() {
             pendingDrinkOrder = null;
-            document.getElementById('drink-options-selector').classList.remove('hidden') ? document.getElementById('drink-options-selector').classList.add('hidden') : null;
-            document.getElementById('popover-menu-items').classList.remove('hidden');
+            const drinkSelector = document.getElementById('drink-options-selector');
+            const menuItems = document.getElementById('popover-menu-items');
+            
+            if (drinkSelector) drinkSelector.classList.add('hidden');
+            if (menuItems) menuItems.classList.remove('hidden');
         }
 
         function hideQuickOrderPopover() {
@@ -1574,7 +1594,11 @@
         document.addEventListener('click', function(e) {
             const popover = document.getElementById('quick-order-popover');
             const container = document.getElementById('members-list-container');
-            if (popover && !popover.contains(e.target) && container && !container.contains(e.target)) {
+            const pendingCard = document.getElementById('pending-members-card');
+            
+            if (popover && !popover.contains(e.target) && 
+                container && !container.contains(e.target) && 
+                pendingCard && !pendingCard.contains(e.target)) {
                 hideQuickOrderPopover();
             }
         });
