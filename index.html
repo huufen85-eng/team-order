@@ -925,11 +925,15 @@
                     const info = itemSummary[itemName];
                     const sub = info.price * info.count;
                     html += `
-                        <span class="bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-slate-700 shadow-2xs">
+                        <div class="bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-slate-700 shadow-2xs flex items-center gap-1.5">
                             <strong class="text-indigo-700">${escapeHtml(itemName)}</strong> 
-                            <span class="text-amber-600 font-bold">x${info.count}</span>
+                            <div class="flex items-center gap-1 bg-slate-100 px-1 py-0.5 rounded border border-slate-200">
+                                <button type="button" onclick="adjustItemCount('${escapeHtml(shop)}', '${escapeHtml(itemName)}', -1, ${info.price})" class="w-4 h-4 flex items-center justify-center bg-white hover:bg-slate-200 text-slate-700 rounded text-xs font-bold leading-none border border-slate-300 transition">-</button>
+                                <input type="number" min="0" value="${info.count}" onchange="setItemCountDirectly('${escapeHtml(shop)}', '${escapeHtml(itemName)}', parseInt(this.value) || 0, ${info.price})" class="w-8 text-center bg-transparent text-amber-600 font-bold focus:outline-none focus:bg-white text-xs p-0 font-mono">
+                                <button type="button" onclick="adjustItemCount('${escapeHtml(shop)}', '${escapeHtml(itemName)}', 1, ${info.price})" class="w-4 h-4 flex items-center justify-center bg-white hover:bg-slate-200 text-slate-700 rounded text-xs font-bold leading-none border border-slate-300 transition">+</button>
+                            </div>
                             ${info.price > 0 ? `<span class="text-slate-400 font-mono">($${sub})</span>` : ''}
-                        </span>
+                        </div>
                     `;
                 });
 
@@ -1062,13 +1066,21 @@
             if (pendingMembers.length > 0) {
                 html += `
                     <div>
-                        <span class="text-rose-700 font-bold block mb-1">🔴 尚未點餐同仁 (點擊可立即為他點餐)：</span>
-                        <div class="flex flex-wrap gap-1">
+                        <span class="text-rose-700 font-bold block mb-1">🔴 尚未點餐同仁 (點擊可個別點餐)：</span>
+                        <div class="flex flex-wrap gap-1 mb-2.5">
                             ${pendingMembers.map(m => `
                                 <button type="button" onclick="showQuickOrderPopover(event, '${escapeHtml(m)}')" class="bg-white hover:bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded font-medium transition">
                                     + ${escapeHtml(m)}
                                 </button>
                             `).join('')}
+                        </div>
+
+                        <!-- 一鍵統一訂餐區域 -->
+                        <div class="bg-rose-100/70 border border-rose-200 p-2 rounded-lg space-y-1.5">
+                            <span class="text-[11px] font-bold text-rose-900 block">⚡ 一鍵為上述 ${pendingMembers.length} 位同仁統一點餐：</span>
+                            <div class="flex flex-wrap gap-1.5">
+                                ${getQuickBatchOrderButtons()}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1645,6 +1657,136 @@
                 renderMemberBadges();
                 showToast("已清空所有成員清冊");
             }
+        }
+
+        // 生成開放店家的快捷統一訂餐按鈕
+        function getQuickBatchOrderButtons() {
+            let btns = [];
+            storeDatabase.forEach(store => {
+                if (activeStores.includes(store.name)) {
+                    store.menu.forEach(m => {
+                        btns.push(`
+                            <button type="button" 
+                                onclick="batchOrderForPending('${escapeHtml(store.name)}', '${escapeHtml(m.item)}', ${m.price})"
+                                class="bg-white hover:bg-rose-50 text-rose-900 border border-rose-300 px-2 py-1 rounded text-xs font-semibold shadow-2xs transition flex items-center gap-1">
+                                <span>${escapeHtml(store.name)}-${escapeHtml(m.item)}</span>
+                                <span class="text-amber-600 font-mono font-bold text-[10px]">$${m.price}</span>
+                            </button>
+                        `);
+                    });
+                }
+            });
+
+            if (btns.length === 0) {
+                return `<span class="text-[11px] text-slate-500">請先勾選今日開放的店家</span>`;
+            }
+            return btns.join('');
+        }
+
+        // 一鍵將所有未點餐人員指定為同一餐點
+        function batchOrderForPending(shop, item, price) {
+            const inputVal = document.getElementById('order-input')?.value || "";
+            const orderedNames = getOrderedMemberNamesFromText(inputVal);
+
+            // 找出所有尚未點餐的同仁
+            const pendingMembers = defaultMembers.filter(m => {
+                const st = memberStatuses[m] || 'eat';
+                return st === 'eat' && !orderedNames.includes(m);
+            });
+
+            if (pendingMembers.length === 0) {
+                showToast("目前沒有尚未點餐的人員！", true);
+                return;
+            }
+
+            const textarea = document.getElementById('order-input');
+            let content = textarea.value.trim();
+
+            const shopHeader = `# ${shop}`;
+            if (!content.includes(shopHeader)) {
+                content += (content ? '\n\n' : '') + `${shopHeader}\n`;
+            }
+
+            const newOrdersText = pendingMembers.map(m => `${m} ${item} ${price}`).join('\n');
+
+            const lines = content.split('\n');
+            const newLines = [];
+            let added = false;
+
+            for (let i = 0; i < lines.length; i++) {
+                newLines.push(lines[i]);
+                if (lines[i].trim() === shopHeader && !added) {
+                    newLines.push(newOrdersText);
+                    added = true;
+                }
+            }
+
+            if (!added) {
+                newLines.push(newOrdersText);
+            }
+
+            textarea.value = newLines.join('\n');
+            showToast(`已為 ${pendingMembers.length} 位同仁統一加上「${item}」！`);
+            processOrders();
+        }
+
+        // 調整總表中特定餐點的數量 (+1 / -1)
+        function adjustItemCount(shop, item, delta, price) {
+            const currentItemOrders = globalOrders.filter(o => o.shop === shop && o.item === item);
+            const currentCount = currentItemOrders.length;
+            const targetCount = currentCount + delta;
+
+            if (targetCount < 0) return;
+            setItemCountDirectly(shop, item, targetCount, price);
+        }
+
+        // 直接設定總表中特定餐點的數量，並自動重算
+        function setItemCountDirectly(shop, item, targetCount, price) {
+            const currentItemOrders = globalOrders.filter(o => o.shop === shop && o.item === item);
+            const currentCount = currentItemOrders.length;
+
+            if (targetCount === currentCount) return;
+
+            if (targetCount > currentCount) {
+                // 追加餐點數量
+                const diff = targetCount - currentCount;
+                let maxId = globalOrders.length > 0 ? Math.max(...globalOrders.map(o => o.id || 0)) : 0;
+
+                for (let i = 0; i < diff; i++) {
+                    maxId++;
+                    globalOrders.push({
+                        id: maxId,
+                        shop: shop,
+                        name: `追加餐點${currentCount + i + 1}`,
+                        item: item,
+                        price: price,
+                        isEditing: false
+                    });
+                }
+                showToast(`已為「${shop}」追加 ${diff} 份「${item}」`);
+            } else if (targetCount < currentCount) {
+                // 減少餐點數量 (優先刪除名字為追加餐點或倒序移除)
+                let removeCount = currentCount - targetCount;
+                
+                // 優先刪除名為 追加餐點 的項目
+                for (let i = globalOrders.length - 1; i >= 0 && removeCount > 0; i--) {
+                    if (globalOrders[i].shop === shop && globalOrders[i].item === item && globalOrders[i].name.startsWith("追加餐點")) {
+                        globalOrders.splice(i, 1);
+                        removeCount--;
+                    }
+                }
+
+                // 若仍需刪除，從最後點該餐點的人倒序扣除
+                for (let i = globalOrders.length - 1; i >= 0 && removeCount > 0; i--) {
+                    if (globalOrders[i].shop === shop && globalOrders[i].item === item) {
+                        globalOrders.splice(i, 1);
+                        removeCount--;
+                    }
+                }
+                showToast(`已為「${shop}」減少「${item}」數量至 ${targetCount} 份`);
+            }
+
+            renderTable();
         }
     </script>
 </body>
