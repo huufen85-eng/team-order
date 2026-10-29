@@ -117,7 +117,7 @@
 
             <!-- 人員標籤清單 -->
             <div id="members-list-container" class="flex flex-wrap gap-2 pt-1">
-                <!-- 動態生成的成員標籤 (包含請假、不吃切換鈕) -->
+                <!-- 動態生成的成員標籤 -->
             </div>
             <p class="text-[11px] text-slate-400">💡 提示：點擊姓名直接跳出選單點餐；點擊右側狀態鈕可直接設定請假或不吃。</p>
         </section>
@@ -226,7 +226,7 @@
                 </div>
             </div>
 
-            <!-- 人員訂餐狀態防漏檢查面板 (重點新增) -->
+            <!-- 人員訂餐狀態防漏檢查面板 -->
             <div id="pending-members-card" class="hidden bg-amber-50/80 border border-amber-200 rounded-xl p-4 space-y-2">
                 <!-- 動態繪製未點餐與請假名單 -->
             </div>
@@ -287,8 +287,8 @@
             const auth = getAuth(app);
             db = getFirestore(app);
 
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'team-ordering-app';
-            docRef = doc(db, 'artifacts', appId, 'public', 'data', 'order_session', 'current');
+            // 修正路徑：直接對應 orders 集合底下的 current_day 文件
+            docRef = doc(db, 'orders', 'current_day');
 
             signInAnonymously(auth).then(() => {
                 const cloudStatus = document.getElementById('cloud-status');
@@ -319,7 +319,7 @@
                     setLocalMode();
                 });
             }).catch(err => {
-                console.warn("Firebase 認證未啟用，切換為本機模式");
+                console.warn("Firebase 認證未啟用，切換為本機模式", err);
                 setLocalMode();
             });
         } catch (e) {
@@ -358,7 +358,6 @@
         let activeStores = JSON.parse(localStorage.getItem('team_active_stores')) || ["50嵐", "正忠排骨飯"]; 
         let defaultMembers = JSON.parse(localStorage.getItem('team_members')) || ["小明", "小華", "阿強", "美環", "大雄"];
         
-        // 人員狀態記錄: key 為姓名, value 為 'eat' (正常), 'leave' (請假), 'none' (不吃)
         let memberStatuses = JSON.parse(localStorage.getItem('team_member_statuses')) || {};
 
         let storeDatabase = JSON.parse(localStorage.getItem('team_stores')) || [
@@ -459,7 +458,6 @@
             }
         });
 
-        // 渲染人員卡片與快速請假切換鈕
         function renderMemberBadges() {
             const container = document.getElementById('members-list-container');
             if (!container) return;
@@ -470,7 +468,6 @@
                 return;
             }
 
-            // 先解析目前的訂餐文字，得知誰已經點餐
             const inputVal = document.getElementById('order-input')?.value || "";
             const orderedNames = getOrderedMemberNamesFromText(inputVal);
 
@@ -504,7 +501,6 @@
                             ${statusTag}
                         </button>
                         
-                        <!-- 快速切換狀態按鈕選單 -->
                         <div class="flex items-center border-l border-slate-200/80 pl-1 gap-0.5" onclick="event.stopPropagation()">
                             <button 
                                 type="button" 
@@ -537,10 +533,9 @@
             updateAttendanceStats();
         }
 
-        // 切換成員狀態 (請假/不吃/正常)
         function setMemberStatus(memberName, status) {
             if (memberStatuses[memberName] === status) {
-                memberStatuses[memberName] = 'eat'; // 再次點擊還原
+                memberStatuses[memberName] = 'eat';
             } else {
                 memberStatuses[memberName] = status;
             }
@@ -561,7 +556,6 @@
             }
         }
 
-        // 重置全員為用餐
         function resetAllStatuses() {
             memberStatuses = {};
             localStorage.setItem('team_member_statuses', JSON.stringify(memberStatuses));
@@ -574,7 +568,6 @@
             if (globalOrders.length > 0) renderTable();
         }
 
-        // 計算並更新上方即時人數統計
         function updateAttendanceStats() {
             const inputVal = document.getElementById('order-input')?.value || "";
             const orderedNames = getOrderedMemberNamesFromText(inputVal);
@@ -601,7 +594,6 @@
             document.getElementById('stat-pending-members').textContent = `${pendingCount} 人`;
         }
 
-        // 從輸入欄位解析出所有已經有點餐的人名
         function getOrderedMemberNamesFromText(text) {
             if (!text) return [];
             const names = [];
@@ -849,7 +841,6 @@
             const exportSection = document.getElementById('export-section');
             const grandTotalCard = document.getElementById('grand-total-card');
 
-            // 繪製人員防漏檢查面板
             renderPendingMembersCard();
 
             if (globalOrders.length === 0) {
@@ -1020,7 +1011,6 @@
             syncToTextarea();
         }
 
-        // 渲染人員未點餐與請假檢查防漏卡片
         function renderPendingMembersCard() {
             const card = document.getElementById('pending-members-card');
             if (!card) return;
@@ -1080,7 +1070,6 @@
                             `).join('')}
                         </div>
 
-                        <!-- 一鍵統一訂餐區域 -->
                         <div class="bg-rose-100/70 border border-rose-200 p-2 rounded-lg space-y-1.5">
                             <span class="text-[11px] font-bold text-rose-900 block">⚡ 一鍵為上述 ${pendingMembers.length} 位同仁統一點餐：</span>
                             <div class="flex flex-wrap gap-1.5">
@@ -1192,7 +1181,6 @@
                 text += `小計：${orders.length} 筆 / $${subtotal} 元\n`;
             });
 
-            // 加入請假與不吃人員清單
             const leaveList = [];
             const noMealList = [];
             const inputVal = document.getElementById('order-input')?.value || "";
@@ -1332,13 +1320,11 @@
                 <button type="button" onclick="toggleMemberModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
             </div>
             
-            <!-- 單筆新增成員 -->
             <div class="flex gap-2">
                 <input type="text" id="new-member-name" placeholder="輸入成員姓名 (例如: 美環)" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500">
                 <button type="button" onclick="addMember()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2 rounded-xl transition font-medium">新增</button>
             </div>
 
-            <!-- 批量匯入成員區塊 -->
             <div class="bg-indigo-50/60 border border-indigo-200 rounded-xl p-3 space-y-2">
                 <div class="flex justify-between items-center">
                     <label for="batch-members-input" class="text-xs font-bold text-indigo-900">📋 批量匯入成員名單</label>
@@ -1372,7 +1358,6 @@
             <button type="button" onclick="hideQuickOrderPopover()" class="text-slate-400 hover:text-slate-600 text-sm font-bold">&times;</button>
         </div>
 
-        <!-- 客製化甜度冰塊選單 (預設隱藏，僅當點擊飲料時展開) -->
         <div id="drink-options-selector" class="hidden bg-indigo-50/70 border border-indigo-200 p-2.5 rounded-lg space-y-2">
             <div class="flex justify-between items-center">
                 <span id="selected-drink-name" class="font-bold text-indigo-900 text-xs">選擇客製化甜度冰塊：</span>
@@ -1433,7 +1418,6 @@
             if (event) event.stopPropagation();
             currentHoverMember = memberName;
             
-            // 開啟視窗時，強制切換回菜單頁面，隱藏飲料頁面
             closeDrinkSelector();
 
             const popover = document.getElementById('quick-order-popover');
@@ -1688,7 +1672,6 @@
             }
         }
 
-        // 生成開放店家的快捷統一訂餐按鈕
         function getQuickBatchOrderButtons() {
             let btns = [];
             storeDatabase.forEach(store => {
@@ -1712,12 +1695,10 @@
             return btns.join('');
         }
 
-        // 一鍵將所有未點餐人員指定為同一餐點
         function batchOrderForPending(shop, item, price) {
             const inputVal = document.getElementById('order-input')?.value || "";
             const orderedNames = getOrderedMemberNamesFromText(inputVal);
 
-            // 找出所有尚未點餐的同仁
             const pendingMembers = defaultMembers.filter(m => {
                 const st = memberStatuses[m] || 'eat';
                 return st === 'eat' && !orderedNames.includes(m);
@@ -1759,7 +1740,6 @@
             processOrders();
         }
 
-        // 調整總表中特定餐點的數量 (+1 / -1)
         function adjustItemCount(shop, item, delta, price) {
             const currentItemOrders = globalOrders.filter(o => o.shop === shop && o.item === item);
             const currentCount = currentItemOrders.length;
@@ -1769,7 +1749,6 @@
             setItemCountDirectly(shop, item, targetCount, price);
         }
 
-        // 直接設定總表中特定餐點的數量，並自動重算
         function setItemCountDirectly(shop, item, targetCount, price) {
             const currentItemOrders = globalOrders.filter(o => o.shop === shop && o.item === item);
             const currentCount = currentItemOrders.length;
@@ -1777,7 +1756,6 @@
             if (targetCount === currentCount) return;
 
             if (targetCount > currentCount) {
-                // 追加餐點數量
                 const diff = targetCount - currentCount;
                 let maxId = globalOrders.length > 0 ? Math.max(...globalOrders.map(o => o.id || 0)) : 0;
 
@@ -1794,10 +1772,8 @@
                 }
                 showToast(`已為「${shop}」追加 ${diff} 份「${item}」`);
             } else if (targetCount < currentCount) {
-                // 減少餐點數量 (優先刪除名字為追加餐點或倒序移除)
                 let removeCount = currentCount - targetCount;
                 
-                // 優先刪除名為 追加餐點 的項目
                 for (let i = globalOrders.length - 1; i >= 0 && removeCount > 0; i--) {
                     if (globalOrders[i].shop === shop && globalOrders[i].item === item && globalOrders[i].name.startsWith("追加餐點")) {
                         globalOrders.splice(i, 1);
@@ -1805,7 +1781,6 @@
                     }
                 }
 
-                // 若仍需刪除，從最後點該餐點的人倒序扣除
                 for (let i = globalOrders.length - 1; i >= 0 && removeCount > 0; i--) {
                     if (globalOrders[i].shop === shop && globalOrders[i].item === item) {
                         globalOrders.splice(i, 1);
