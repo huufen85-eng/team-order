@@ -216,13 +216,28 @@
         <section id="export-section" class="border-t border-slate-200 pt-6 space-y-3 no-print hidden">
             <h3 class="text-sm font-semibold text-slate-700">資料導出與分享</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button onclick="copyGroupText()" class="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    複製群組對帳明細 (純文字)
+                </button>
+                <button onclick="exportShopSummaryCSV()" class="w-full py-2.5 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition flex items-center justify-center gap-2 border border-indigo-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    匯出各店家點餐統計 Excel (CSV)
+                </button>
+            </div>
+        </section>
+    </main>
+
     <!-- Firebase SDK 引入 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 已替換為您的專屬 Firebase 專案設定
         const firebaseConfig = {
             apiKey: "AIzaSyAocL6E_6DzAlqhPaV9CCOeiSeD4kwP_y0",
             authDomain: "team-ordering-app.firebaseapp.com",
@@ -242,7 +257,6 @@
 
         let isRemoteUpdate = false;
 
-        // Firebase 匿名認證與即時監聽
         signInAnonymously(auth).then(() => {
             const cloudStatus = document.getElementById('cloud-status');
             if (cloudStatus) {
@@ -250,7 +264,6 @@
                 cloudStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> 雲端即時同步中`;
             }
 
-            // 監聽雲端資料變更
             onSnapshot(docRef, (snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.data();
@@ -269,7 +282,6 @@
             console.error("Firebase 認證失敗:", err);
         });
 
-        // 當輸入內容改變時，同步至雲端
         window.syncOrdersToCloud = function(rawText) {
             isRemoteUpdate = true;
             setDoc(docRef, {
@@ -283,10 +295,9 @@
 
     <!-- JavaScript 邏輯處理 -->
     <script>
-        let globalOrders = []; // 儲存 { id, shop, name, item, price, isEditing }
-        let activeStores = ["50嵐", "正忠排骨飯"]; // 今日開放訂餐的店家名單
+        let globalOrders = []; 
+        let activeStores = ["50嵐", "正忠排骨飯"]; 
         
-        // 預設店家菜單資料庫 (新增 isDrink 欄位)
         let storeDatabase = [
             {
                 name: "50嵐",
@@ -308,12 +319,10 @@
             }
         ];
 
-        // 初始化
         document.addEventListener("DOMContentLoaded", () => {
             renderActiveStoresSelector();
             renderStoreDatabase();
 
-            // 切換店家表單
             const toggleBtn = document.getElementById('toggle-menu-form');
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', () => {
@@ -322,7 +331,6 @@
                 });
             }
 
-            // 儲存新店家/菜單
             const saveBtn = document.getElementById('save-store-btn');
             if (saveBtn) {
                 saveBtn.addEventListener('click', () => {
@@ -349,7 +357,6 @@
                         });
                     }
 
-                    // 檢查是否已存在該店家
                     const existingIndex = storeDatabase.findIndex(s => s.name === nameInput);
                     if (existingIndex >= 0) {
                         storeDatabase[existingIndex].menu = menuItems;
@@ -357,7 +364,7 @@
                     } else {
                         storeDatabase.push({ name: nameInput, isDrink: isDrinkInput, menu: menuItems });
                         if (!activeStores.includes(nameInput)) {
-                            activeStores.push(nameInput); // 新增店家預設設為開放
+                            activeStores.push(nameInput);
                         }
                     }
 
@@ -371,9 +378,13 @@
                     showToast(`已成功儲存「${nameInput}」菜單！`);
                 });
             }
+
+            const submitBtn = document.getElementById('submit-btn');
+            if (submitBtn) {
+                submitBtn.addEventListener('click', processOrders);
+            }
         });
 
-        // 渲染「今日開放店家」設定區
         function renderActiveStoresSelector() {
             const container = document.getElementById('active-stores-selector');
             if (!container) return;
@@ -387,6 +398,7 @@
                 const isOpen = activeStores.includes(store.name);
                 return `
                     <button 
+                        type="button"
                         onclick="toggleActiveStore('${escapeHtml(store.name)}')" 
                         class="px-2.5 py-1 rounded-lg text-xs font-medium border transition flex items-center gap-1.5 ${isOpen ? 'bg-emerald-100 text-emerald-800 border-emerald-300 shadow-sm' : 'bg-white text-slate-400 border-slate-200 hover:text-slate-600'}">
                         <span class="w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
@@ -397,7 +409,6 @@
             }).join('');
         }
 
-        // 切換今日開放店家
         function toggleActiveStore(storeName) {
             const idx = activeStores.indexOf(storeName);
             if (idx >= 0) {
@@ -409,7 +420,6 @@
             renderStoreDatabase();
         }
 
-        // 渲染店家與菜單快捷清單
         function renderStoreDatabase() {
             const container = document.getElementById('stores-list-container');
             if (!container) return;
@@ -431,10 +441,10 @@
                                 ${isOpen ? '<span class="px-1.5 py-0.2 bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] rounded font-medium">今日開放</span>' : '<span class="text-[10px] text-slate-400">(未開放)</span>'}
                             </span>
                             <div class="space-x-2">
-                                <button onclick="insertStoreHeader('${escapeHtml(store.name)}')" class="text-[11px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 transition font-medium">
+                                <button type="button" onclick="insertStoreHeader('${escapeHtml(store.name)}')" class="text-[11px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 transition font-medium">
                                     帶入點餐
                                 </button>
-                                <button onclick="deleteStoreFromDb(${sIdx})" class="text-[11px] text-rose-600 hover:text-rose-700 transition">
+                                <button type="button" onclick="deleteStoreFromDb(${sIdx})" class="text-[11px] text-rose-600 hover:text-rose-700 transition">
                                     刪除
                                 </button>
                             </div>
@@ -447,7 +457,7 @@
                 } else {
                     store.menu.forEach(m => {
                         html += `
-                            <button onclick="appendOrderItem('${escapeHtml(store.name)}', '${escapeHtml(m.item)}', ${m.price})" class="text-[11px] bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-2 py-1 rounded transition flex items-center gap-1">
+                            <button type="button" onclick="appendOrderItem('${escapeHtml(store.name)}', '${escapeHtml(m.item)}', ${m.price})" class="text-[11px] bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-2 py-1 rounded transition flex items-center gap-1">
                                 <span>${escapeHtml(m.item)}</span>
                                 <span class="text-amber-600 font-mono text-[10px] font-bold">$${m.price}</span>
                             </button>
@@ -464,7 +474,6 @@
             container.innerHTML = html;
         }
 
-        // 刪除店家菜單設定
         function deleteStoreFromDb(index) {
             const storeName = storeDatabase[index]?.name;
             if (storeName) {
@@ -476,7 +485,6 @@
             renderStoreDatabase();
         }
 
-        // 點擊帶入店家標號至 Textarea
         function insertStoreHeader(storeName) {
             const textarea = document.getElementById('order-input');
             const currentVal = textarea.value.trim();
@@ -490,12 +498,10 @@
             textarea.focus();
         }
 
-        // 點擊品項快速加入文字輸入框
         function appendOrderItem(storeName, item, price) {
             const textarea = document.getElementById('order-input');
             let content = textarea.value;
 
-            // 若目前內容中未包含該店家標籤，自動補上
             if (!content.includes(`# ${storeName}`)) {
                 if (content.trim()) content += `\n\n`;
                 content += `# ${storeName}\n`;
@@ -506,13 +512,14 @@
             showToast(`已加入「${item}」！請修改「姓名」`);
         }
 
-        // 帶入多店家範例資料
-        document.getElementById('demo-btn').addEventListener('click', function() {
-            document.getElementById('order-input').value = `# 50嵐\n小明 珍珠奶茶 60\n小華 燕麥紅茶 45\n小美 珍珠奶茶 60\n\n# 正忠排骨飯\n小明 排骨飯 100\n小華 雞腿飯 110\n阿強 招牌便當 95\n\n# 摩斯漢堡\n小美 摩斯漢堡套餐 150`;
-        });
+        const demoBtn = document.getElementById('demo-btn');
+        if (demoBtn) {
+            demoBtn.addEventListener('click', function() {
+                document.getElementById('order-input').value = `# 50嵐\n小明 珍珠奶茶 60\n小華 燕麥紅茶 45\n小美 珍珠奶茶 60\n\n# 正忠排骨飯\n小明 排骨飯 100\n小華 雞腿飯 110\n阿強 招牌便當 95\n\n# 摩斯漢堡\n小美 摩斯漢堡套餐 150`;
+            });
+        }
 
-        // 解析與提交按鈕監聽
-        document.getElementById('submit-btn').addEventListener('click', function() {
+        function processOrders() {
             const input = document.getElementById('order-input').value.trim();
             const resultContainer = document.getElementById('result-container');
             const badge = document.getElementById('status-badge');
@@ -536,7 +543,6 @@
                 const trimmed = line.trim();
                 if (!trimmed) return;
 
-                // 判斷是否為店家標頭 (例如 # 50嵐, [50嵐], 店家: 50嵐, === 50嵐 ===)
                 const headerMatch = trimmed.match(/^(?:#|\[|===|店家[:：])\s*([^\]=#]+)\s*(?:\]|===)?$/);
                 if (headerMatch) {
                     currentShop = headerMatch[1].trim();
@@ -577,9 +583,8 @@
             }
 
             renderTable();
-        });
+        }
 
-        // 自動對照菜單資料庫取得價格
         function findPriceFromDb(shopName, itemName) {
             const store = storeDatabase.find(s => s.name === shopName);
             if (store) {
@@ -589,7 +594,6 @@
             return 0;
         }
 
-        // 依店家分組渲染表格畫面
         function renderTable() {
             const resultContainer = document.getElementById('result-container');
             const badge = document.getElementById('status-badge');
@@ -608,7 +612,6 @@
                 return;
             }
 
-            // 按店家進行資料分組 (Group by shop)
             const groupedShops = {};
             let grandTotalAmount = 0;
 
@@ -622,7 +625,6 @@
 
             const shopNames = Object.keys(groupedShops);
 
-            // 更新全域總計列
             const shopsCountEl = document.getElementById('total-shops-count');
             const ordersCountEl = document.getElementById('total-orders-count');
             const grandTotalEl = document.getElementById('grand-total-amount');
@@ -634,11 +636,10 @@
 
             let html = `<div class="w-full space-y-6">`;
 
-            shopNames.forEach((shop, shopIdx) => {
+            shopNames.forEach((shop) => {
                 const orders = groupedShops[shop];
                 let shopSubtotal = 0;
 
-                // 統計該店家點餐品項數量
                 const itemSummary = {};
                 orders.forEach(o => {
                     shopSubtotal += Number(o.price) || 0;
@@ -650,7 +651,6 @@
 
                 html += `
                     <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                        <!-- 店家卡片標頭 -->
                         <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
                             <div class="flex items-center gap-2">
                                 <span class="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg">
@@ -667,7 +667,6 @@
                             </div>
                         </div>
 
-                        <!-- 該店家菜色點餐統計區 (方便向店家下單) -->
                         <div class="bg-slate-50/50 p-3 px-4 border-b border-slate-200">
                             <div class="text-xs font-semibold text-slate-500 mb-1.5 flex items-center gap-1">
                                 <span>🍱 店家下單餐點彙整：</span>
@@ -691,7 +690,6 @@
                             </div>
                         </div>
 
-                        <!-- 個人訂購明細表格 -->
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm text-left text-slate-700">
                                 <thead class="text-xs text-slate-500 uppercase bg-slate-100 border-b border-slate-200">
@@ -722,8 +720,8 @@
                                     <input type="number" id="edit-price-${globalIdx}" value="${o.price}" class="w-20 bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-800 text-right focus:outline-none focus:border-indigo-500">
                                 </td>
                                 <td class="px-2 py-2 text-center space-x-1 no-print">
-                                    <button onclick="saveOrder(${globalIdx})" class="text-xs px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded transition">儲存</button>
-                                    <button onclick="cancelEdit(${globalIdx})" class="text-xs px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded transition">取消</button>
+                                    <button type="button" onclick="saveOrder(${globalIdx})" class="text-xs px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded transition">儲存</button>
+                                    <button type="button" onclick="cancelEdit(${globalIdx})" class="text-xs px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded transition">取消</button>
                                 </td>
                             </tr>
                         `;
@@ -734,8 +732,8 @@
                                 <td class="px-3 py-2 text-slate-700">${escapeHtml(o.item)}</td>
                                 <td class="px-3 py-2 text-right font-mono text-slate-800">${o.price ? `$${o.price}` : '$0'}</td>
                                 <td class="px-3 py-2 text-center space-x-2 no-print">
-                                    <button onclick="enableEdit(${globalIdx})" class="text-xs text-indigo-600 hover:text-indigo-800 transition font-medium">修改</button>
-                                    <button onclick="deleteOrder(${globalIdx})" class="text-xs text-rose-600 hover:text-rose-800 transition font-medium">刪除</button>
+                                    <button type="button" onclick="enableEdit(${globalIdx})" class="text-xs text-indigo-600 hover:text-indigo-800 transition font-medium">修改</button>
+                                    <button type="button" onclick="deleteOrder(${globalIdx})" class="text-xs text-rose-600 hover:text-rose-800 transition font-medium">刪除</button>
                                 </td>
                             </tr>
                         `;
@@ -766,19 +764,16 @@
             syncToTextarea();
         }
 
-        // 開啟編輯
         function enableEdit(index) {
             globalOrders[index].isEditing = true;
             renderTable();
         }
 
-        // 取消編輯
         function cancelEdit(index) {
             globalOrders[index].isEditing = false;
             renderTable();
         }
 
-        // 儲存修改
         function saveOrder(index) {
             const shop = document.getElementById(`edit-shop-${index}`).value.trim() || "預設店家";
             const name = document.getElementById(`edit-name-${index}`).value.trim();
@@ -794,13 +789,11 @@
             renderTable();
         }
 
-        // 刪除訂單
         function deleteOrder(index) {
             globalOrders.splice(index, 1);
             renderTable();
         }
 
-        // 反向同步至上方 Textarea
         function syncToTextarea() {
             let currentShop = "";
             const lines = [];
@@ -813,10 +806,17 @@
                 lines.push(`${o.name} ${o.item} ${o.price}`);
             });
 
-            document.getElementById('order-input').value = lines.join('\n').trim();
+            const newContent = lines.join('\n').trim();
+            const inputEl = document.getElementById('order-input');
+            if (inputEl) {
+                inputEl.value = newContent;
+            }
+
+            if (window.syncOrdersToCloud) {
+                window.syncOrdersToCloud(newContent);
+            }
         }
 
-        // 複製格式 1：按店家分組的群組對帳明細
         function copyGroupText() {
             if (globalOrders.length === 0) return;
             
@@ -846,10 +846,9 @@
             text += `💰 全站總計：${globalOrders.length} 筆\n`;
             text += `💵 總金額：$${grandTotal} 元`;
 
-            copyToClipboard(text, "已複製多店家對帳明細！");
+            fallbackCopy(text, "已複製多店家對帳明細！");
         }
 
-        // 匯出格式 2：按店家分組的店家點餐統計 Excel (CSV 格式，Excel 可直接開啟)
         function exportShopSummaryCSV() {
             if (globalOrders.length === 0) return;
 
@@ -864,7 +863,7 @@
                 grandTotalAmount += o.price;
             });
 
-            let csvContent = "\uFEFF"; // UTF-8 BOM 避免 Excel 開啟亂碼
+            let csvContent = "\uFEFF"; 
             csvContent += "店家名稱,點餐品項,數量,單價,小計金額\n";
 
             Object.keys(groupedShops).forEach(shop => {
@@ -883,7 +882,6 @@
                     itemSummary[o.item].count += 1;
                 });
 
-                // 店家分區資料
                 Object.keys(itemSummary).forEach(itemName => {
                     const info = itemSummary[itemName];
                     const subtotal = info.unitPrice * info.count;
@@ -892,12 +890,10 @@
                     csvContent += `${escapedShop},${escapedItem},${info.count},${info.unitPrice},${subtotal}\n`;
                 });
 
-                // 該店家小計列
                 const escapedShopName = `"${shop.replace(/"/g, '""')} (小計)"`;
                 csvContent += `${escapedShopName},"—",${shopSubtotalCount},"—",${shopSubtotalAmount}\n\n`;
             });
 
-            // 全站總計列
             csvContent += `"全站總計","—",${grandTotalCount},"—",${grandTotalAmount}\n`;
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -912,56 +908,6 @@
             document.body.removeChild(link);
 
             showToast("已成功匯出各店家點餐統計 Excel (CSV) 檔案！");
-        }
-
-        // 匯出 CSV：包含「個人個人明細」欄位
-        function exportCSV() {
-            if (globalOrders.length === 0) return;
-
-            let csvContent = "\uFEFF"; // 加入 UTF-8 BOM 防中文亂碼
-            csvContent += "店家名稱,訂購人,餐點名稱,單價,數量,小計\n";
-
-            // 先按店家統計數量與細項
-            globalOrders.forEach(o => {
-                const shop = `"${o.shop.replace(/"/g, '""')}"`;
-                const name = `"${o.name.replace(/"/g, '""')}"`;
-                const item = `"${o.item.replace(/"/g, '""')}"`;
-                csvContent += `${shop},${name},${item},${o.price},1,${o.price}\n`;
-            });
-
-            const totalAmount = globalOrders.reduce((sum, o) => sum + o.price, 0);
-            csvContent += `\n"全站總計","","","","${globalOrders.length} 筆","${totalAmount}"\n`;
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            
-            const today = new Date().toISOString().split('T')[0];
-            link.setAttribute("href", url);
-            link.setAttribute("download", `團隊跨店家訂餐明細_${today}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-        // 反向同步至上方 Textarea 並同步至 Firebase 雲端
-        function syncToTextarea() {
-            let currentShop = "";
-            const lines = [];
-
-            globalOrders.forEach(o => {
-                if (o.shop !== currentShop) {
-                    currentShop = o.shop;
-                    lines.push(`\n# ${currentShop}`);
-                }
-                lines.push(`${o.name} ${o.item} ${o.price}`);
-            });
-
-            const newContent = lines.join('\n').trim();
-            document.getElementById('order-input').value = newContent;
-
-            if (window.syncOrdersToCloud) {
-                window.syncOrdersToCloud(newContent);
-            }
         }
 
         function fallbackCopy(text, successMsg) {
@@ -981,7 +927,6 @@
             document.body.removeChild(textArea);
         }
 
-        // Toast 提示框
         function showToast(msg, isError = false) {
             const toast = document.getElementById('toast');
             const toastMsg = document.getElementById('toast-message');
@@ -998,7 +943,6 @@
             }, 2500);
         }
 
-        // HTML 轉義字元
         function escapeHtml(str) {
             return str
                 .replace(/&/g, "&amp;")
@@ -1014,12 +958,12 @@
         <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-slate-200 pb-3">
                 <h3 class="font-bold text-slate-800 text-base">管理人員清冊</h3>
-                <button onclick="toggleMemberModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+                <button type="button" onclick="toggleMemberModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
             </div>
             
             <div class="flex gap-2">
                 <input type="text" id="new-member-name" placeholder="輸入成員姓名 (例如: 美環)" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500">
-                <button onclick="addMember()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2 rounded-xl transition font-medium">新增</button>
+                <button type="button" onclick="addMember()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2 rounded-xl transition font-medium">新增</button>
             </div>
 
             <div id="modal-member-list" class="max-h-60 overflow-y-auto space-y-2 pr-1">
@@ -1027,7 +971,7 @@
             </div>
 
             <div class="pt-2 flex justify-end">
-                <button onclick="toggleMemberModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-xl transition font-medium">關閉</button>
+                <button type="button" onclick="toggleMemberModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-xl transition font-medium">關閉</button>
             </div>
         </div>
     </div>
@@ -1036,17 +980,15 @@
     <div id="quick-order-popover" class="fixed z-50 hidden bg-white border border-slate-200 shadow-2xl rounded-xl p-3 w-80 space-y-3 text-xs">
         <div class="flex justify-between items-center border-b border-slate-100 pb-1.5">
             <span id="popover-member-name" class="font-bold text-indigo-700">為 小明 點餐：</span>
-            <button onclick="hideQuickOrderPopover()" class="text-slate-400 hover:text-slate-600 text-sm font-bold">&times;</button>
+            <button type="button" onclick="hideQuickOrderPopover()" class="text-slate-400 hover:text-slate-600 text-sm font-bold">&times;</button>
         </div>
 
-        <!-- 甜度冰塊選擇器 (僅飲料類品項點擊時顯示) -->
         <div id="drink-options-selector" class="hidden bg-indigo-50/70 border border-indigo-200 p-2.5 rounded-lg space-y-2">
             <div class="flex justify-between items-center">
                 <span id="selected-drink-name" class="font-bold text-indigo-900 text-xs">選擇客製化甜度冰塊：</span>
-                <button onclick="closeDrinkSelector()" class="text-[10px] text-slate-500 hover:text-slate-700 underline">返回菜單</button>
+                <button type="button" onclick="closeDrinkSelector()" class="text-[10px] text-slate-500 hover:text-slate-700 underline">返回菜單</button>
             </div>
             
-            <!-- 甜度選擇 -->
             <div class="space-y-1">
                 <div class="text-[10px] font-semibold text-slate-500">甜度：</div>
                 <div id="sweetness-options" class="flex flex-wrap gap-1">
@@ -1058,7 +1000,6 @@
                 </div>
             </div>
 
-            <!-- 冰塊選擇 -->
             <div class="space-y-1">
                 <div class="text-[10px] font-semibold text-slate-500">冰塊：</div>
                 <div id="ice-options" class="flex flex-wrap gap-1">
@@ -1070,8 +1011,7 @@
                 </div>
             </div>
 
-            <!-- 確認加入按鈕 -->
-            <button onclick="confirmCustomDrinkOrder()" class="w-full py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-medium text-xs shadow-xs mt-1 transition">
+            <button type="button" onclick="confirmCustomDrinkOrder()" class="w-full py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-medium text-xs shadow-xs mt-1 transition">
                 加入訂單
             </button>
         </div>
@@ -1082,15 +1022,15 @@
     </div>
 
     <script>
-        // 人員清冊與快捷點餐邏輯
         let defaultMembers = JSON.parse(localStorage.getItem('team_members')) || ["小明", "小華", "阿強", "美環", "大雄"];
 
         let currentHoverMember = "";
-        let pendingDrinkOrder = null; // 暫存點選的飲料資品項 { shop, name, item, price, sweet, ice }
+        let pendingDrinkOrder = null; 
 
-        // 初始化人員標籤
         function renderMemberBadges() {
             const container = document.getElementById('members-list-container');
+            if (!container) return;
+
             if (defaultMembers.length === 0) {
                 container.innerHTML = `<span class="text-xs text-slate-400">目前尚無預設人員，請點擊右上角「管理人員清冊」新增。</span>`;
                 return;
@@ -1099,6 +1039,7 @@
             container.innerHTML = defaultMembers.map(member => `
                 <div class="relative group inline-block">
                     <button 
+                        type="button"
                         onmouseenter="showQuickOrderPopover(event, '${escapeHtml(member)}')"
                         onclick="showQuickOrderPopover(event, '${escapeHtml(member)}')"
                         class="px-3 py-1.5 rounded-lg bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-slate-700 text-xs font-medium transition flex items-center gap-1.5 shadow-2xs">
@@ -1109,7 +1050,6 @@
             `).join('');
         }
 
-        // 顯示快捷點餐 Popover
         function showQuickOrderPopover(event, memberName) {
             currentHoverMember = memberName;
             closeDrinkSelector();
@@ -1141,6 +1081,7 @@
                             if (isOpen) {
                                 html += `
                                     <button 
+                                        type="button"
                                         onclick="handleItemClick('${escapeHtml(store.name)}', '${escapeHtml(memberName)}', '${escapeHtml(m.item)}', ${m.price})"
                                         class="w-full text-left p-1.5 rounded hover:bg-indigo-50 flex justify-between items-center transition group cursor-pointer">
                                         <span class="text-slate-700 group-hover:text-indigo-700">${escapeHtml(m.item)}</span>
@@ -1165,20 +1106,15 @@
                 itemsEl.innerHTML = html;
             }
 
-            // 定位 Popover
             const rect = event.currentTarget.getBoundingClientRect();
             popover.style.top = `${rect.bottom + window.scrollY + 6}px`;
             popover.style.left = `${Math.min(rect.left + window.scrollX, window.innerWidth - 320)}px`;
             popover.classList.remove('hidden');
         }
 
-        // 判斷點擊的品項是否需要選擇甜度冰塊
         function handleItemClick(shop, name, item, price) {
-            // 優先檢查店家資料庫是否有明確註記為飲料店 (isDrink)
             const store = storeDatabase.find(s => s.name === shop);
             const isDrinkStore = store && store.isDrink;
-
-            // 雙重判斷：若店家標記為飲料店，或店家/品項名稱包含常見飲料關鍵字
             const isDrink = isDrinkStore || /茶|奶|飲|咖啡|汁|冰|水|嵐|麻古|可不可|迷客夏|清心|珍煮丹|五桐號/i.test(shop) || /茶|奶|咖啡|汁|飲|冰|露|拿鐵|美式/i.test(item);
 
             if (isDrink) {
@@ -1188,7 +1124,6 @@
             }
         }
 
-        // 打開甜度冰塊選擇器
         function openDrinkSelector(shop, name, item, price) {
             pendingDrinkOrder = { shop, name, item, price, sweet: "微糖", ice: "微冰" };
 
@@ -1196,7 +1131,6 @@
             document.getElementById('drink-options-selector').classList.remove('hidden');
             document.getElementById('popover-menu-items').classList.add('hidden');
 
-            // 預設高亮微糖、微冰
             updateOptionButtons('sweet', '微糖');
             updateOptionButtons('ice', '微冰');
         }
@@ -1212,7 +1146,6 @@
             closeDrinkSelector();
         }
 
-        // 選取甜度冰塊按鈕
         function selectOption(type, value) {
             if (!pendingDrinkOrder) return;
             pendingDrinkOrder[type] = value;
@@ -1230,7 +1163,6 @@
             });
         }
 
-        // 確認加入含甜度冰塊的飲料
         function confirmCustomDrinkOrder() {
             if (!pendingDrinkOrder) return;
             const { shop, name, item, price, sweet, ice } = pendingDrinkOrder;
@@ -1240,12 +1172,10 @@
             hideQuickOrderPopover();
         }
 
-        // 快速點擊將訂單追加至 Textarea
         function appendQuickOrder(shop, name, item, price) {
             const textarea = document.getElementById('order-input');
             let content = textarea.value.trim();
 
-            // 檢查是否已存在該店家標題
             const shopHeader = `# ${shop}`;
             if (!content.includes(shopHeader)) {
                 content += (content ? '\n\n' : '') + `${shopHeader}\n${name} ${item} ${price}`;
@@ -1269,7 +1199,6 @@
             hideQuickOrderPopover();
         }
 
-        // 關閉 Popover
         document.addEventListener('click', function(e) {
             const popover = document.getElementById('quick-order-popover');
             const container = document.getElementById('members-list-container');
@@ -1278,7 +1207,6 @@
             }
         });
 
-        // 人員 Modal 控制
         function toggleMemberModal() {
             const modal = document.getElementById('member-modal');
             modal.classList.toggle('hidden');
@@ -1292,7 +1220,7 @@
             container.innerHTML = defaultMembers.map((m, idx) => `
                 <div class="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                     <span class="text-slate-800 font-medium">${escapeHtml(m)}</span>
-                    <button onclick="removeMember(${idx})" class="text-rose-600 hover:text-rose-800">刪除</button>
+                    <button type="button" onclick="removeMember(${idx})" class="text-rose-600 hover:text-rose-800">刪除</button>
                 </div>
             `).join('');
         }
@@ -1316,7 +1244,6 @@
             renderMemberBadges();
         }
 
-        // 頁面載入初始化人員標籤
         window.addEventListener('DOMContentLoaded', () => {
             renderMemberBadges();
         });
