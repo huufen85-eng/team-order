@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>極簡團隊訂餐系統</title>
+    <title>極簡團隊訂餐系統 - 人員出勤防漏版</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Font: Inter -->
@@ -22,9 +22,6 @@
             .no-print {
                 display: none !important;
             }
-            .print-only-title {
-                display: block !important;
-            }
             main {
                 max-width: 100% !important;
                 border: none !important;
@@ -39,13 +36,10 @@
                 border-bottom: 1px solid #ddd !important;
                 color: black !important;
             }
-            .text-indigo-600, .text-slate-600, .text-slate-700, .text-slate-800 {
-                color: black !important;
-            }
         }
     </style>
 </head>
-<body class="min-h-full flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 bg-slate-100 text-slate-800">
+<body class="min-h-full flex flex-col justify-center items-center p-3 sm:p-6 lg:p-8 bg-slate-100 text-slate-800">
 
     <!-- Toast 提示訊息 -->
     <div id="toast" class="fixed top-5 right-5 z-50 transform translate-y-[-100px] opacity-0 transition-all duration-300 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm font-medium">
@@ -56,45 +50,71 @@
     </div>
 
     <!-- 主容器 -->
-    <main class="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl shadow-xl p-6 sm:p-8 space-y-6 my-auto">
+    <main class="w-full max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-xl p-5 sm:p-8 space-y-6 my-auto">
         
         <!-- 上方大標題與說明 -->
         <header class="text-center space-y-2">
             <div class="flex items-center justify-center gap-2">
-                <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
-                    團隊跨店家快速訂餐彙整
+                <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+                    團隊跨店家訂餐與人員防漏統計
                 </h1>
                 <span id="cloud-status" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
                     <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                     連線中...
                 </span>
             </div>
-            <p class="text-sm sm:text-base text-slate-500 no-print">
-                支援多店家分組！貼上團隊訂餐清單，自動依店家歸類品項、統計數量與金額，支援 Firebase 雲端即時同步。
+            <p class="text-xs sm:text-base text-slate-500 no-print">
+                人員出勤與請假標記防漏，支援多店家分組、菜單點餐與 Firebase 雲端即時同步。
             </p>
         </header>
 
-        <!-- 預設人員清冊管理與快捷點餐區塊 -->
-        <section class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 no-print">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+        <!-- 預設人員清冊管理與請假狀態區塊 -->
+        <section class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3.5 no-print">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                <div class="flex items-center gap-2 text-sm font-bold text-slate-800">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
-                    <span>預設人員清冊 (移至標籤可快捷點餐)</span>
+                    <span>人員清冊與請假防漏管理</span>
                 </div>
-                <button type="button" onclick="toggleMemberModal()" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    管理人員清冊
-                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="resetAllStatuses()" class="text-xs text-slate-500 hover:text-slate-700 bg-white border border-slate-200 px-2 py-1 rounded-lg transition">
+                        重置全員為用餐
+                    </button>
+                    <button type="button" onclick="toggleMemberModal()" class="text-xs text-indigo-600 hover:text-indigo-700 font-semibold bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 transition flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        管理成員
+                    </button>
+                </div>
+            </div>
+
+            <!-- 人員訂餐統計條 (實時計算) -->
+            <div id="attendance-summary-bar" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div class="bg-white border border-slate-200 p-2 rounded-lg text-center">
+                    <span class="text-slate-400 block text-[10px]">總清冊人數</span>
+                    <span id="stat-total-members" class="font-bold text-slate-800 text-sm">0 人</span>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-center">
+                    <span class="text-emerald-600 block text-[10px]">已完成點餐</span>
+                    <span id="stat-ordered-members" class="font-bold text-emerald-700 text-sm">0 人</span>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 p-2 rounded-lg text-center">
+                    <span class="text-amber-600 block text-[10px]">請假 / 不吃便當</span>
+                    <span id="stat-leave-members" class="font-bold text-amber-700 text-sm">0 人</span>
+                </div>
+                <div class="bg-rose-50 border border-rose-200 p-2 rounded-lg text-center">
+                    <span class="text-rose-600 block text-[10px]">尚未點餐 (缺漏)</span>
+                    <span id="stat-pending-members" class="font-bold text-rose-700 text-sm">0 人</span>
+                </div>
             </div>
 
             <!-- 人員標籤清單 -->
             <div id="members-list-container" class="flex flex-wrap gap-2 pt-1">
-                <!-- 動態生成的成員標籤 -->
+                <!-- 動態生成的成員標籤 (包含請假、不吃切換鈕) -->
             </div>
+            <p class="text-[11px] text-slate-400">💡 提示：點擊姓名直接跳出選單點餐；點擊右側狀態鈕可直接設定請假或不吃。</p>
         </section>
 
         <!-- 今日開放訂餐店家公告 & 設定區塊 -->
@@ -157,16 +177,16 @@
             <div class="space-y-1.5">
                 <div class="flex justify-between items-center">
                     <label for="order-input" class="block text-sm font-medium text-slate-700">
-                        訂餐資料輸入 (支援 `# 店家名稱` 分組或每行指定)
+                        訂餐資料輸入 (支援 `# 店家名稱` 分組，點選人員亦會同步呈現)
                     </label>
                     <button type="button" id="demo-btn" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline transition">
-                        帶入多店家範例
+                        帶入範例資料
                     </button>
                 </div>
                 <textarea 
                     id="order-input" 
                     rows="7" 
-                    class="w-full rounded-xl bg-slate-50 border border-slate-300 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition duration-150 resize-y"
+                    class="w-full rounded-xl bg-slate-50 border border-slate-300 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition duration-150 resize-y font-mono"
                     placeholder="# 50嵐&#10;小明 珍珠奶茶 60&#10;小華 燕麥紅茶 45&#10;&#10;# 正忠排骨飯&#10;小明 排骨飯 100&#10;小華 雞腿飯 110"></textarea>
             </div>
 
@@ -185,7 +205,7 @@
         <!-- 下方預留空白顯示結果區域 -->
         <section class="border-t border-slate-200 pt-6 space-y-4">
             <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-slate-800">彙整結果</h2>
+                <h2 class="text-lg font-bold text-slate-800">訂餐彙整與人員防漏核對表</h2>
                 <span id="status-badge" class="hidden text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 font-medium border border-slate-200">
                     尚無資料
                 </span>
@@ -193,12 +213,17 @@
 
             <!-- 全域總計卡片 (預設隱藏) -->
             <div id="grand-total-card" class="hidden bg-indigo-50/50 border border-indigo-200 rounded-xl p-4 flex flex-wrap justify-between items-center gap-2">
-                <div class="text-slate-700 text-sm font-semibold">全站訂購總計</div>
+                <div class="text-slate-700 text-sm font-bold">全站訂購總計</div>
                 <div class="flex items-center gap-4 text-sm font-bold">
                     <span id="total-shops-count" class="text-slate-500">店家數: 0</span>
-                    <span id="total-orders-count" class="text-slate-700">總筆數: 0 筆</span>
+                    <span id="total-orders-count" class="text-slate-700">餐點總筆數: 0 筆</span>
                     <span id="grand-total-amount" class="text-indigo-600 font-mono text-xl">總金額: $0</span>
                 </div>
+            </div>
+
+            <!-- 人員訂餐狀態防漏檢查面板 (重點新增) -->
+            <div id="pending-members-card" class="hidden bg-amber-50/80 border border-amber-200 rounded-xl p-4 space-y-2">
+                <!-- 動態繪製未點餐與請假名單 -->
             </div>
 
             <!-- 結果顯示框 -->
@@ -214,19 +239,19 @@
 
         <!-- 匯出與導出功能區 -->
         <section id="export-section" class="border-t border-slate-200 pt-6 space-y-3 no-print hidden">
-            <h3 class="text-sm font-semibold text-slate-700">資料導出與分享</h3>
+            <h3 class="text-sm font-bold text-slate-700">資料導出與群組核對</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button type="button" onclick="copyGroupText()" class="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center justify-center gap-2">
+                <button type="button" onclick="copyGroupText()" class="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition flex items-center justify-center gap-2 border border-slate-300">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                     </svg>
-                    複製群組對帳明細 (純文字)
+                    複製群組明細 (含請假/不吃/未點清單)
                 </button>
-                <button type="button" onclick="exportShopSummaryCSV()" class="w-full py-2.5 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition flex items-center justify-center gap-2 border border-indigo-200">
+                <button type="button" onclick="exportShopSummaryCSV()" class="w-full py-2.5 px-4 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition flex items-center justify-center gap-2 border border-indigo-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    匯出各店家點餐統計 Excel (CSV)
+                    匯出各店家訂餐 Excel (CSV)
                 </button>
             </div>
         </section>
@@ -248,46 +273,71 @@
             measurementId: "G-F0BZPNY4X8"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'team-ordering-app';
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'order_session', 'current');
-
+        let db = null;
+        let docRef = null;
         let isRemoteUpdate = false;
 
-        signInAnonymously(auth).then(() => {
-            const cloudStatus = document.getElementById('cloud-status');
-            if (cloudStatus) {
-                cloudStatus.className = "px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1";
-                cloudStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> 雲端即時同步中`;
-            }
+        try {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            db = getFirestore(app);
 
-            onSnapshot(docRef, (snapshot) => {
-                if (snapshot.exists()) {
-                    const data = snapshot.data();
-                    if (data.rawInput !== undefined && !isRemoteUpdate) {
-                        const inputEl = document.getElementById('order-input');
-                        if (inputEl && inputEl.value !== data.rawInput) {
-                            inputEl.value = data.rawInput;
-                            document.getElementById('submit-btn').click();
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'team-ordering-app';
+            docRef = doc(db, 'artifacts', appId, 'public', 'data', 'order_session', 'current');
+
+            signInAnonymously(auth).then(() => {
+                const cloudStatus = document.getElementById('cloud-status');
+                if (cloudStatus) {
+                    cloudStatus.className = "px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1";
+                    cloudStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> 雲端即時同步中`;
+                }
+
+                onSnapshot(docRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        if (data.rawInput !== undefined && !isRemoteUpdate) {
+                            const inputEl = document.getElementById('order-input');
+                            if (inputEl && inputEl.value !== data.rawInput) {
+                                inputEl.value = data.rawInput;
+                                processOrders();
+                            }
+                        }
+                        if (data.memberStatuses && !isRemoteUpdate) {
+                            memberStatuses = data.memberStatuses;
+                            localStorage.setItem('team_member_statuses', JSON.stringify(memberStatuses));
+                            renderMemberBadges();
+                            updateAttendanceStats();
                         }
                     }
-                }
-            }, (error) => {
-                console.error("Firebase 監聽失敗:", error);
+                }, (error) => {
+                    console.warn("Firebase 監聽失敗，切換為本機模式:", error);
+                    setLocalMode();
+                });
+            }).catch(err => {
+                console.warn("Firebase 認證未啟用，切換為本機模式");
+                setLocalMode();
             });
-        }).catch(err => {
-            console.error("Firebase 認證失敗:", err);
-        });
+        } catch (e) {
+            console.warn("Firebase 初始化失敗，使用本機模式", e);
+            setLocalMode();
+        }
 
-        window.syncOrdersToCloud = function(rawText) {
+        function setLocalMode() {
+            const cloudStatus = document.getElementById('cloud-status');
+            if (cloudStatus) {
+                cloudStatus.className = "px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-300 flex items-center gap-1";
+                cloudStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-400"></span> 本機儲存模式`;
+            }
+        }
+
+        window.syncOrdersToCloud = function(rawText, statuses) {
+            if (!docRef) return;
             isRemoteUpdate = true;
             setDoc(docRef, {
                 rawInput: rawText,
+                memberStatuses: statuses || memberStatuses,
                 updatedAt: new Date().toISOString()
-            }, { merge: true }).finally(() => {
+            }, { merge: true }).catch(() => {}).finally(() => {
                 isRemoteUpdate = false;
             });
         };
@@ -297,8 +347,11 @@
     <script>
         let globalOrders = []; 
         let activeStores = JSON.parse(localStorage.getItem('team_active_stores')) || ["50嵐", "正忠排骨飯"]; 
+        let defaultMembers = JSON.parse(localStorage.getItem('team_members')) || ["小明", "小華", "阿強", "美環", "大雄"];
         
-        // 優先從瀏覽器本機記憶載入店家與菜單，刪除或新增後會自動記憶
+        // 人員狀態記錄: key 為姓名, value 為 'eat' (正常), 'leave' (請假), 'none' (不吃)
+        let memberStatuses = JSON.parse(localStorage.getItem('team_member_statuses')) || {};
+
         let storeDatabase = JSON.parse(localStorage.getItem('team_stores')) || [
             {
                 name: "50嵐",
@@ -323,6 +376,7 @@
         document.addEventListener("DOMContentLoaded", () => {
             renderActiveStoresSelector();
             renderStoreDatabase();
+            renderMemberBadges();
 
             const toggleBtn = document.getElementById('toggle-menu-form');
             if (toggleBtn) {
@@ -369,7 +423,6 @@
                         }
                     }
 
-                    // 儲存至瀏覽器本機記憶
                     localStorage.setItem('team_stores', JSON.stringify(storeDatabase));
                     localStorage.setItem('team_active_stores', JSON.stringify(activeStores));
 
@@ -388,7 +441,184 @@
             if (submitBtn) {
                 submitBtn.addEventListener('click', processOrders);
             }
+
+            const orderInput = document.getElementById('order-input');
+            if (orderInput) {
+                orderInput.addEventListener('input', () => {
+                    updateAttendanceStats();
+                });
+            }
         });
+
+        // 渲染人員卡片與快速請假切換鈕
+        function renderMemberBadges() {
+            const container = document.getElementById('members-list-container');
+            if (!container) return;
+
+            if (defaultMembers.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400">目前尚無預設人員，請點擊右上角「管理成員」新增。</span>`;
+                updateAttendanceStats();
+                return;
+            }
+
+            // 先解析目前的訂餐文字，得知誰已經點餐
+            const inputVal = document.getElementById('order-input')?.value || "";
+            const orderedNames = getOrderedMemberNamesFromText(inputVal);
+
+            container.innerHTML = defaultMembers.map(member => {
+                const status = memberStatuses[member] || 'eat';
+                const hasOrdered = orderedNames.includes(member);
+
+                let badgeStyle = "bg-white text-slate-700 border-slate-200 hover:border-indigo-300";
+                let statusTag = "";
+
+                if (status === 'leave') {
+                    badgeStyle = "bg-amber-50 text-amber-800 border-amber-300 opacity-80";
+                    statusTag = `<span class="bg-amber-200 text-amber-900 text-[10px] px-1.5 py-0.5 rounded font-bold">🏖️ 請假</span>`;
+                } else if (status === 'none') {
+                    badgeStyle = "bg-slate-100 text-slate-500 border-slate-300 opacity-70 line-through";
+                    statusTag = `<span class="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded font-bold no-underline">🚫 不吃便當</span>`;
+                } else if (hasOrdered) {
+                    badgeStyle = "bg-emerald-50 text-emerald-900 border-emerald-300 font-medium";
+                    statusTag = `<span class="bg-emerald-200 text-emerald-900 text-[10px] px-1.5 py-0.5 rounded font-bold">✓ 已點餐</span>`;
+                } else {
+                    statusTag = `<span class="bg-rose-100 text-rose-700 text-[10px] px-1.5 py-0.5 rounded font-bold animate-pulse">待點餐</span>`;
+                }
+
+                return `
+                    <div class="inline-flex items-center gap-1 p-1 rounded-xl border ${badgeStyle} shadow-2xs transition">
+                        <button 
+                            type="button"
+                            onclick="handleMemberClick(event, '${escapeHtml(member)}')"
+                            class="px-2 py-0.5 text-xs font-semibold flex items-center gap-1.5 hover:opacity-80">
+                            <span>${escapeHtml(member)}</span>
+                            ${statusTag}
+                        </button>
+                        
+                        <!-- 快速切換狀態按鈕選單 -->
+                        <div class="flex items-center border-l border-slate-200/80 pl-1 gap-0.5">
+                            <button 
+                                type="button" 
+                                title="標記為請假"
+                                onclick="setMemberStatus('${escapeHtml(member)}', 'leave')" 
+                                class="text-[10px] px-1.5 py-0.5 rounded hover:bg-amber-200 ${status === 'leave' ? 'bg-amber-300 font-bold text-amber-900' : 'text-slate-400 hover:text-amber-800'}">
+                                假
+                            </button>
+                            <button 
+                                type="button" 
+                                title="標記為不吃便當"
+                                onclick="setMemberStatus('${escapeHtml(member)}', 'none')" 
+                                class="text-[10px] px-1.5 py-0.5 rounded hover:bg-slate-200 ${status === 'none' ? 'bg-slate-300 font-bold text-slate-800' : 'text-slate-400 hover:text-slate-700'}">
+                                否
+                            </button>
+                            ${status !== 'eat' ? `
+                                <button 
+                                    type="button" 
+                                    title="恢復要用餐"
+                                    onclick="setMemberStatus('${escapeHtml(member)}', 'eat')" 
+                                    class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold">
+                                    還原
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            updateAttendanceStats();
+        }
+
+        // 切換成員狀態 (請假/不吃/正常)
+        function setMemberStatus(memberName, status) {
+            if (memberStatuses[memberName] === status) {
+                memberStatuses[memberName] = 'eat'; // 再次點擊還原
+            } else {
+                memberStatuses[memberName] = status;
+            }
+
+            localStorage.setItem('team_member_statuses', JSON.stringify(memberStatuses));
+            renderMemberBadges();
+
+            if (window.syncOrdersToCloud) {
+                const inputVal = document.getElementById('order-input')?.value || "";
+                window.syncOrdersToCloud(inputVal, memberStatuses);
+            }
+
+            const labelMap = { leave: '請假 🏖️', none: '不吃便當 🚫', eat: '正常用餐 🍱' };
+            showToast(`已將 ${memberName} 設定為：${labelMap[memberStatuses[memberName]]}`);
+
+            if (globalOrders.length > 0) {
+                renderTable();
+            }
+        }
+
+        // 重置全員為用餐
+        function resetAllStatuses() {
+            memberStatuses = {};
+            localStorage.setItem('team_member_statuses', JSON.stringify(memberStatuses));
+            renderMemberBadges();
+            if (window.syncOrdersToCloud) {
+                const inputVal = document.getElementById('order-input')?.value || "";
+                window.syncOrdersToCloud(inputVal, memberStatuses);
+            }
+            showToast("已將所有人狀態重置為正常用餐！");
+            if (globalOrders.length > 0) renderTable();
+        }
+
+        // 計算並更新上方即時人數統計
+        function updateAttendanceStats() {
+            const inputVal = document.getElementById('order-input')?.value || "";
+            const orderedNames = getOrderedMemberNamesFromText(inputVal);
+
+            let total = defaultMembers.length;
+            let orderedCount = 0;
+            let leaveCount = 0;
+            let pendingCount = 0;
+
+            defaultMembers.forEach(m => {
+                const st = memberStatuses[m] || 'eat';
+                if (st === 'leave' || st === 'none') {
+                    leaveCount++;
+                } else if (orderedNames.includes(m)) {
+                    orderedCount++;
+                } else {
+                    pendingCount++;
+                }
+            });
+
+            document.getElementById('stat-total-members').textContent = `${total} 人`;
+            document.getElementById('stat-ordered-members').textContent = `${orderedCount} 人`;
+            document.getElementById('stat-leave-members').textContent = `${leaveCount} 人`;
+            document.getElementById('stat-pending-members').textContent = `${pendingCount} 人`;
+        }
+
+        // 從輸入欄位解析出所有已經有點餐的人名
+        function getOrderedMemberNamesFromText(text) {
+            if (!text) return [];
+            const names = [];
+            text.split('\n').forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('[') || trimmed.startsWith('===')) return;
+                const parts = trimmed.split(/\s+/);
+                if (parts.length >= 2) {
+                    names.push(parts[0]);
+                }
+            });
+            return [...new Set(names)];
+        }
+
+        function handleMemberClick(event, memberName) {
+            const st = memberStatuses[memberName] || 'eat';
+            if (st === 'leave' || st === 'none') {
+                const action = st === 'leave' ? '請假中' : '註記不吃便當';
+                if (confirm(`【${memberName}】目前狀態為「${action}」，是否要取消該狀態並進行點餐？`)) {
+                    setMemberStatus(memberName, 'eat');
+                    showQuickOrderPopover(event, memberName);
+                }
+            } else {
+                showQuickOrderPopover(event, memberName);
+            }
+        }
 
         function renderActiveStoresSelector() {
             const container = document.getElementById('active-stores-selector');
@@ -488,7 +718,6 @@
             }
             storeDatabase.splice(index, 1);
 
-            // 💾 記錄刪除狀態至瀏覽器本機記憶
             localStorage.setItem('team_stores', JSON.stringify(storeDatabase));
             localStorage.setItem('team_active_stores', JSON.stringify(activeStores));
 
@@ -507,6 +736,7 @@
                 textarea.value = `${currentVal}\n\n${newHeader}`;
             }
             textarea.focus();
+            updateAttendanceStats();
         }
 
         function appendOrderItem(storeName, item, price) {
@@ -521,12 +751,17 @@
             content += `姓名 ${item} ${price}\n`;
             textarea.value = content;
             showToast(`已加入「${item}」！請修改「姓名」`);
+            updateAttendanceStats();
         }
 
         const demoBtn = document.getElementById('demo-btn');
         if (demoBtn) {
             demoBtn.addEventListener('click', function() {
-                document.getElementById('order-input').value = `# 50嵐\n小明 珍珠奶茶 60\n小華 燕麥紅茶 45\n小美 珍珠奶茶 60\n\n# 正忠排骨飯\n小明 排骨飯 100\n小華 雞腿飯 110\n阿強 招牌便當 95\n\n# 摩斯漢堡\n小美 摩斯漢堡套餐 150`;
+                document.getElementById('order-input').value = `# 50嵐\n小明 珍珠奶茶 60\n小華 燕麥紅茶 45\n\n# 正忠排骨飯\n小明 排骨飯 100\n阿強 雞腿飯 110`;
+                memberStatuses = { "美環": "leave", "大雄": "none" };
+                localStorage.setItem('team_member_statuses', JSON.stringify(memberStatuses));
+                renderMemberBadges();
+                processOrders();
             });
         }
 
@@ -536,13 +771,15 @@
             const badge = document.getElementById('status-badge');
             const exportSection = document.getElementById('export-section');
             const grandTotalCard = document.getElementById('grand-total-card');
+            const pendingMembersCard = document.getElementById('pending-members-card');
 
-            if (!input) {
-                resultContainer.className = "min-h-[160px] rounded-xl bg-slate-950/50 border border-slate-800/80 p-5 flex flex-col items-center justify-center text-center text-slate-500";
-                resultContainer.innerHTML = `<p class="text-amber-400 text-sm">請先在上方輸入框輸入訂餐資料！</p>`;
+            if (!input && Object.keys(memberStatuses).length === 0) {
+                resultContainer.className = "min-h-[160px] rounded-xl bg-slate-50 border border-slate-200 p-5 flex flex-col items-center justify-center text-center text-slate-400";
+                resultContainer.innerHTML = `<p class="text-amber-600 text-sm font-medium">請先在上方輸入訂餐資料或標記人員請假！</p>`;
                 badge.classList.add('hidden');
                 exportSection.classList.add('hidden');
                 grandTotalCard.classList.add('hidden');
+                if (pendingMembersCard) pendingMembersCard.classList.add('hidden');
                 return;
             }
 
@@ -584,16 +821,8 @@
                 }
             });
 
-            if (globalOrders.length === 0) {
-                resultContainer.className = "min-h-[160px] rounded-xl bg-slate-950/50 border border-slate-800/80 p-5 flex flex-col items-center justify-center text-center text-slate-500";
-                resultContainer.innerHTML = `<p class="text-red-400 text-sm">格式不符，請確認每筆資料包含姓名與餐點資訊。</p>`;
-                badge.classList.add('hidden');
-                exportSection.classList.add('hidden');
-                grandTotalCard.classList.add('hidden');
-                return;
-            }
-
             renderTable();
+            renderMemberBadges();
         }
 
         function findPriceFromDb(shopName, itemName) {
@@ -611,10 +840,13 @@
             const exportSection = document.getElementById('export-section');
             const grandTotalCard = document.getElementById('grand-total-card');
 
+            // 繪製人員防漏檢查面板
+            renderPendingMembersCard();
+
             if (globalOrders.length === 0) {
                 if (resultContainer) {
                     resultContainer.className = "min-h-[160px] rounded-xl bg-slate-50 border border-slate-200 p-5 flex flex-col items-center justify-center text-center text-slate-400";
-                    resultContainer.innerHTML = `<p class="text-slate-400 text-sm">目前無訂單資料。</p>`;
+                    resultContainer.innerHTML = `<p class="text-slate-400 text-sm">目前尚無點餐資料，請點擊上方人員名單快速點餐。</p>`;
                 }
                 if (badge) badge.classList.add('hidden');
                 if (exportSection) exportSection.classList.add('hidden');
@@ -641,7 +873,7 @@
             const grandTotalEl = document.getElementById('grand-total-amount');
 
             if (shopsCountEl) shopsCountEl.textContent = `店家數: ${shopNames.length}`;
-            if (ordersCountEl) ordersCountEl.textContent = `總筆數: ${globalOrders.length} 筆`;
+            if (ordersCountEl) ordersCountEl.textContent = `餐點總筆數: ${globalOrders.length} 筆`;
             if (grandTotalEl) grandTotalEl.textContent = `總金額: $${grandTotalAmount}`;
             if (grandTotalCard) grandTotalCard.classList.remove('hidden');
 
@@ -775,6 +1007,93 @@
             syncToTextarea();
         }
 
+        // 渲染人員未點餐與請假檢查防漏卡片
+        function renderPendingMembersCard() {
+            const card = document.getElementById('pending-members-card');
+            if (!card) return;
+
+            const inputVal = document.getElementById('order-input')?.value || "";
+            const orderedNames = getOrderedMemberNamesFromText(inputVal);
+
+            const pendingMembers = [];
+            const leaveMembers = [];
+
+            defaultMembers.forEach(m => {
+                const st = memberStatuses[m] || 'eat';
+                if (st === 'leave') {
+                    leaveMembers.push(`${m} (請假)`);
+                } else if (st === 'none') {
+                    leaveMembers.push(`${m} (不吃便當)`);
+                } else if (!orderedNames.includes(m)) {
+                    pendingMembers.push(m);
+                }
+            });
+
+            if (pendingMembers.length === 0 && leaveMembers.length === 0) {
+                card.className = "bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-800 flex items-center justify-between";
+                card.innerHTML = `
+                    <div class="flex items-center gap-2 font-bold">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>🎉 太棒了！清冊內所有人員皆已點餐或已完成請假標記！</span>
+                    </div>
+                `;
+                card.classList.remove('hidden');
+                return;
+            }
+
+            let html = `
+                <div class="flex items-center justify-between border-b border-amber-200 pb-2">
+                    <span class="font-bold text-amber-900 text-xs flex items-center gap-1.5">
+                        ⚠️ 人員出勤與訂餐核對提醒 (防漏勾對)
+                    </span>
+                    <span class="text-[11px] text-amber-800 font-medium">
+                        未點餐: ${pendingMembers.length} 人 | 不吃/請假: ${leaveMembers.length} 人
+                    </span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+            `;
+
+            if (pendingMembers.length > 0) {
+                html += `
+                    <div>
+                        <span class="text-rose-700 font-bold block mb-1">🔴 尚未點餐同仁 (點擊可立即為他點餐)：</span>
+                        <div class="flex flex-wrap gap-1">
+                            ${pendingMembers.map(m => `
+                                <button type="button" onclick="showQuickOrderPopover(event, '${escapeHtml(m)}')" class="bg-white hover:bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded font-medium transition">
+                                    + ${escapeHtml(m)}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="text-emerald-700 font-bold flex items-center gap-1">
+                        ✓ 無漏掉之用餐人員
+                    </div>
+                `;
+            }
+
+            if (leaveMembers.length > 0) {
+                html += `
+                    <div>
+                        <span class="text-slate-600 font-bold block mb-1">🏖️ 不用餐 / 請假人員名單：</span>
+                        <div class="flex flex-wrap gap-1 text-slate-600">
+                            ${leaveMembers.map(m => `
+                                <span class="bg-slate-200/80 px-2 py-0.5 rounded text-[11px] font-medium">${escapeHtml(m)}</span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+            card.className = "bg-amber-50/90 border border-amber-200 rounded-xl p-3.5 space-y-2 shadow-xs";
+            card.classList.remove('hidden');
+        }
+
         function enableEdit(index) {
             globalOrders[index].isEditing = true;
             renderTable();
@@ -824,13 +1143,12 @@
             }
 
             if (window.syncOrdersToCloud) {
-                window.syncOrdersToCloud(newContent);
+                window.syncOrdersToCloud(newContent, memberStatuses);
             }
+            updateAttendanceStats();
         }
 
         function copyGroupText() {
-            if (globalOrders.length === 0) return;
-            
             const groupedShops = {};
             let grandTotal = 0;
 
@@ -840,7 +1158,7 @@
                 grandTotal += o.price;
             });
 
-            let text = "📋 【團隊跨店家訂餐明細】\n";
+            let text = "📋 【團隊跨店家訂餐與出勤核對明細】\n";
 
             Object.keys(groupedShops).forEach(shop => {
                 const orders = groupedShops[shop];
@@ -853,15 +1171,36 @@
                 text += `小計：${orders.length} 筆 / $${subtotal} 元\n`;
             });
 
+            // 加入請假與不吃人員清單
+            const leaveList = [];
+            const noMealList = [];
+            const inputVal = document.getElementById('order-input')?.value || "";
+            const orderedNames = getOrderedMemberNamesFromText(inputVal);
+            const pendingList = [];
+
+            defaultMembers.forEach(m => {
+                const st = memberStatuses[m] || 'eat';
+                if (st === 'leave') leaveList.push(m);
+                else if (st === 'none') noMealList.push(m);
+                else if (!orderedNames.includes(m)) pendingList.push(m);
+            });
+
             text += `\n==================\n`;
-            text += `💰 全站總計：${globalOrders.length} 筆\n`;
+            if (leaveList.length > 0) text += `🏖️ 請假人員：${leaveList.join('、')}\n`;
+            if (noMealList.length > 0) text += `🚫 不吃便當：${noMealList.join('、')}\n`;
+            if (pendingList.length > 0) text += `❓ 尚未點餐：${pendingList.join('、')}\n`;
+
+            text += `💰 餐點總筆數：${globalOrders.length} 筆\n`;
             text += `💵 總金額：$${grandTotal} 元`;
 
-            fallbackCopy(text, "已複製多店家對帳明細！");
+            fallbackCopy(text, "已複製含請假明細之訂餐文字！");
         }
 
         function exportShopSummaryCSV() {
-            if (globalOrders.length === 0) return;
+            if (globalOrders.length === 0) {
+                showToast("目前尚無訂單可匯出！", true);
+                return;
+            }
 
             const groupedShops = {};
             let grandTotalCount = 0;
@@ -968,20 +1307,38 @@
     <div id="member-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-slate-200 pb-3">
-                <h3 class="font-bold text-slate-800 text-base">管理人員清冊</h3>
+                <h3 class="font-bold text-slate-800 text-base">管理成員清冊</h3>
                 <button type="button" onclick="toggleMemberModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
             </div>
             
+            <!-- 單筆新增成員 -->
             <div class="flex gap-2">
                 <input type="text" id="new-member-name" placeholder="輸入成員姓名 (例如: 美環)" class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500">
                 <button type="button" onclick="addMember()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2 rounded-xl transition font-medium">新增</button>
             </div>
 
-            <div id="modal-member-list" class="max-h-60 overflow-y-auto space-y-2 pr-1">
+            <!-- 批量匯入成員區塊 -->
+            <div class="bg-indigo-50/60 border border-indigo-200 rounded-xl p-3 space-y-2">
+                <div class="flex justify-between items-center">
+                    <label for="batch-members-input" class="text-xs font-bold text-indigo-900">📋 批量匯入成員名單</label>
+                    <span class="text-[10px] text-indigo-600">支援以逗號、頓號、空格或換行分隔</span>
+                </div>
+                <textarea id="batch-members-input" rows="3" placeholder="小明, 小華, 阿強&#10;美環 依晨" class="w-full bg-white border border-indigo-200 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500 font-sans"></textarea>
+                <div class="flex justify-end">
+                    <button type="button" onclick="importBatchMembers()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium shadow-2xs">
+                        執行批量匯入
+                    </button>
+                </div>
+            </div>
+
+            <div id="modal-member-list" class="max-h-52 overflow-y-auto space-y-2 pr-1">
                 <!-- 人員編輯列表 -->
             </div>
 
-            <div class="pt-2 flex justify-end">
+            <div class="pt-2 flex justify-between items-center">
+                <button type="button" onclick="clearAllMembers()" class="text-rose-600 hover:text-rose-700 text-xs font-medium underline">
+                    清空所有人員
+                </button>
                 <button type="button" onclick="toggleMemberModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-xl transition font-medium">關閉</button>
             </div>
         </div>
@@ -1033,33 +1390,8 @@
     </div>
 
     <script>
-        let defaultMembers = JSON.parse(localStorage.getItem('team_members')) || ["小明", "小華", "阿強", "美環", "大雄"];
-
         let currentHoverMember = "";
         let pendingDrinkOrder = null; 
-
-        function renderMemberBadges() {
-            const container = document.getElementById('members-list-container');
-            if (!container) return;
-
-            if (defaultMembers.length === 0) {
-                container.innerHTML = `<span class="text-xs text-slate-400">目前尚無預設人員，請點擊右上角「管理人員清冊」新增。</span>`;
-                return;
-            }
-
-            container.innerHTML = defaultMembers.map(member => `
-                <div class="relative group inline-block">
-                    <button 
-                        type="button"
-                        onmouseenter="showQuickOrderPopover(event, '${escapeHtml(member)}')"
-                        onclick="showQuickOrderPopover(event, '${escapeHtml(member)}')"
-                        class="px-3 py-1.5 rounded-lg bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-slate-700 text-xs font-medium transition flex items-center gap-1.5 shadow-2xs">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        <span>${escapeHtml(member)}</span>
-                    </button>
-                </div>
-            `).join('');
-        }
 
         function showQuickOrderPopover(event, memberName) {
             currentHoverMember = memberName;
@@ -1118,8 +1450,8 @@
             }
 
             const rect = event.currentTarget.getBoundingClientRect();
-            popover.style.top = `${rect.bottom + window.scrollY + 6}px`;
-            popover.style.left = `${Math.min(rect.left + window.scrollX, window.innerWidth - 320)}px`;
+            popover.style.top = `${Math.min(rect.bottom + window.scrollY + 6, window.innerHeight + window.scrollY - 280)}px`;
+            popover.style.left = `${Math.min(rect.left + window.scrollX, window.innerWidth - 330)}px`;
             popover.classList.remove('hidden');
         }
 
@@ -1208,12 +1540,16 @@
             textarea.value = content;
             showToast(`已新增：${name} - ${item} ($${price})`);
             hideQuickOrderPopover();
+            
+            // 自動更新訂餐計算與狀態
+            processOrders();
         }
 
         document.addEventListener('click', function(e) {
             const popover = document.getElementById('quick-order-popover');
             const container = document.getElementById('members-list-container');
-            if (popover && !popover.contains(e.target) && container && !container.contains(e.target)) {
+            const pendingCard = document.getElementById('pending-members-card');
+            if (popover && !popover.contains(e.target) && container && !container.contains(e.target) && pendingCard && !pendingCard.contains(e.target)) {
                 hideQuickOrderPopover();
             }
         });
@@ -1231,7 +1567,7 @@
             container.innerHTML = defaultMembers.map((m, idx) => `
                 <div class="flex items-center justify-between p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                     <span class="text-slate-800 font-medium">${escapeHtml(m)}</span>
-                    <button type="button" onclick="removeMember(${idx})" class="text-rose-600 hover:text-rose-800">刪除</button>
+                    <button type="button" onclick="removeMember(${idx})" class="text-rose-600 hover:text-rose-800 font-semibold">刪除</button>
                 </div>
             `).join('');
         }
@@ -1240,24 +1576,80 @@
             const input = document.getElementById('new-member-name');
             const name = input.value.trim();
             if (name) {
-                defaultMembers.push(name);
+                if (!defaultMembers.includes(name)) {
+                    defaultMembers.push(name);
+                    localStorage.setItem('team_members', JSON.stringify(defaultMembers));
+                    input.value = '';
+                    renderModalMemberList();
+                    renderMemberBadges();
+                    showToast(`已新增成員：${name}`);
+                } else {
+                    showToast("此成員已在列表中！", true);
+                }
+            }
+        }
+
+        // 批量匯入成員邏輯
+        function importBatchMembers() {
+            const textarea = document.getElementById('batch-members-input');
+            const rawText = textarea.value.trim();
+
+            if (!rawText) {
+                showToast("請輸入要匯入的人員名單！", true);
+                return;
+            }
+
+            // 使用正則表達式分割：換行、半形/全形逗號、頓號、多個空白字元
+            const parsedNames = rawText.split(/[\n,，\s、]+/).map(n => n.trim()).filter(n => n.length > 0);
+
+            if (parsedNames.length === 0) {
+                showToast("未解析到有效的人員姓名", true);
+                return;
+            }
+
+            let addedCount = 0;
+            parsedNames.forEach(name => {
+                if (!defaultMembers.includes(name)) {
+                    defaultMembers.push(name);
+                    addedCount++;
+                }
+            });
+
+            if (addedCount > 0) {
                 localStorage.setItem('team_members', JSON.stringify(defaultMembers));
-                input.value = '';
+                textarea.value = '';
                 renderModalMemberList();
                 renderMemberBadges();
+                showToast(`成功匯入 ${addedCount} 位成員！`);
+            } else {
+                showToast("輸入的成員均已存在於名單中！", true);
+            }
+        }
+
+        // 清空所有人員
+        function clearAllMembers() {
+            if (confirm("確定要清空所有人員清冊嗎？此動作將清除所有名單與請假狀態。")) {
+                defaultMembers = [];
+                memberStatuses = {};
+                localStorage.setItem('team_members', JSON.stringify(defaultMembers));
+                localStorage.setItem('team_member_statuses', JSON.stringify(memberStatuses));
+                renderModalMemberList();
+                renderMemberBadges();
+                showToast("已清空所有人員清冊！");
             }
         }
 
         function removeMember(idx) {
+            const removed = defaultMembers[idx];
+            if (removed) {
+                delete memberStatuses[removed];
+                localStorage.setItem('team_member_statuses', JSON.stringify(memberStatuses));
+            }
             defaultMembers.splice(idx, 1);
             localStorage.setItem('team_members', JSON.stringify(defaultMembers));
             renderModalMemberList();
             renderMemberBadges();
         }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            renderMemberBadges();
-        });
     </script>
 </body>
 </html>
