@@ -333,13 +333,17 @@
         window.syncOrdersToCloud = function(rawText, statuses) {
             if (!docRef) return;
             isRemoteUpdate = true;
-            setDoc(docRef, {
-                rawInput: rawText,
-                memberStatuses: statuses || memberStatuses,
-                updatedAt: new Date().toISOString()
-            }, { merge: true }).catch(() => {}).finally(() => {
+            try {
+                setDoc(docRef, {
+                    rawInput: rawText,
+                    memberStatuses: statuses || memberStatuses,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true }).catch(() => {}).finally(() => {
+                    isRemoteUpdate = false;
+                });
+            } catch(e) {
                 isRemoteUpdate = false;
-            });
+            }
         };
     </script>
 
@@ -496,7 +500,7 @@
                         </button>
                         
                         <!-- 快速切換狀態按鈕選單 -->
-                        <div class="flex items-center border-l border-slate-200/80 pl-1 gap-0.5">
+                        <div class="flex items-center border-l border-slate-200/80 pl-1 gap-0.5" onclick="event.stopPropagation()">
                             <button 
                                 type="button" 
                                 title="標記為請假"
@@ -1394,6 +1398,7 @@
         let pendingDrinkOrder = null; 
 
         function showQuickOrderPopover(event, memberName) {
+            if (event) event.stopPropagation();
             currentHoverMember = memberName;
             closeDrinkSelector();
 
@@ -1441,6 +1446,30 @@
                                     </div>
                                 `;
                             }
+                        });
+                    }
+
+                    html += `</div>`;
+                });
+                itemsEl.innerHTML = html;
+            }
+
+            const target = event ? event.currentTarget : document.body;
+            const rect = target.getBoundingClientRect();
+            
+            popover.classList.remove('hidden');
+            
+            let top = rect.bottom + window.scrollY + 6;
+            let left = rect.left + window.scrollX;
+
+            if (left + 330 > window.innerWidth) {
+                left = window.innerWidth - 340;
+            }
+            if (left < 10) left = 10;
+
+            popover.style.top = `${top}px`;
+            popover.style.left = `${left}px`;
+        }
                         });
                     }
 
