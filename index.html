@@ -10,9 +10,9 @@
     
     <title>極簡團隊訂餐系統 - 人員出勤防漏版</title>
 
-    <!-- ⚡ 自動版本更新檢查機制：每次修改程式碼上傳時，請同步將此處版號往後改（例如 v02 -> v03），其他人開啟時就會自動強制更新 -->
+    <!-- ⚡ 自動版本更新檢查機制 -->
     <script>
-      const CURRENT_VERSION = 'v2026.11.02-01'; 
+      const CURRENT_VERSION = 'v2026.11.02-02'; 
       const savedVersion = localStorage.getItem('app_version');
       if (savedVersion && savedVersion !== CURRENT_VERSION) {
         localStorage.setItem('app_version', CURRENT_VERSION);
@@ -312,6 +312,8 @@
                 onSnapshot(docRef, (snapshot) => {
                     if (snapshot.exists()) {
                         const data = snapshot.data();
+                        
+                        // 1. 同步訂餐輸入框文字
                         if (data.rawInput !== undefined && !isRemoteUpdate) {
                             const inputEl = document.getElementById('order-input');
                             if (inputEl && inputEl.value !== data.rawInput) {
@@ -319,11 +321,35 @@
                                 processOrders();
                             }
                         }
+
+                        // 2. 同步人員清冊 (members)
+                        if (data.members && !isRemoteUpdate) {
+                            defaultMembers = data.members;
+                            localStorage.setItem('team_members', JSON.stringify(defaultMembers));
+                            renderMemberBadges();
+                        }
+
+                        // 3. 同步人員請假狀態 (memberStatuses)
                         if (data.memberStatuses && !isRemoteUpdate) {
                             memberStatuses = data.memberStatuses;
                             localStorage.setItem('team_member_statuses', JSON.stringify(memberStatuses));
                             renderMemberBadges();
                             updateAttendanceStats();
+                        }
+
+                        // 4. 🔥 同步店家與菜單資料庫 (stores)
+                        if (data.stores && !isRemoteUpdate) {
+                            storeDatabase = data.stores;
+                            localStorage.setItem('team_stores', JSON.stringify(storeDatabase));
+                            renderStoreDatabase();
+                        }
+
+                        // 5. 🔥 同步今日開放店家 (activeStores)
+                        if (data.activeStores && !isRemoteUpdate) {
+                            activeStores = data.activeStores;
+                            localStorage.setItem('team_active_stores', JSON.stringify(activeStores));
+                            renderActiveStoresSelector();
+                            renderStoreDatabase();
                         }
                     }
                 }, (error) => {
@@ -347,13 +373,17 @@
             }
         }
 
-        window.syncOrdersToCloud = function(rawText, statuses) {
+        // 🔥 將人員、請假狀態、店家菜單、開放店家全數打包寫入雲端
+        window.syncOrdersToCloud = function(rawText, statuses, members, stores, actStores) {
             if (!docRef) return;
             isRemoteUpdate = true;
             try {
                 setDoc(docRef, {
-                    rawInput: rawText,
+                    rawInput: rawText !== undefined ? rawText : (document.getElementById('order-input')?.value || ""),
                     memberStatuses: statuses || memberStatuses,
+                    members: members || defaultMembers,
+                    stores: stores || storeDatabase,
+                    activeStores: actStores || activeStores,
                     updatedAt: new Date().toISOString()
                 }, { merge: true }).catch(() => {}).finally(() => {
                     isRemoteUpdate = false;
@@ -369,7 +399,6 @@
         let globalOrders = []; 
         let activeStores = JSON.parse(localStorage.getItem('team_active_stores')) || ["50嵐", "正忠排骨飯"]; 
         let defaultMembers = JSON.parse(localStorage.getItem('team_members')) || ["小明", "小華", "阿強", "美環", "大雄"];
-        
         let memberStatuses = JSON.parse(localStorage.getItem('team_member_statuses')) || {};
 
         let storeDatabase = JSON.parse(localStorage.getItem('team_stores')) || [
@@ -453,6 +482,11 @@
 
                     renderActiveStoresSelector();
                     renderStoreDatabase();
+                    
+                    // 🔥 儲存店家後立即上傳雲端
+                    if (window.syncOrdersToCloud) {
+                        window.syncOrdersToCloud(null, null, null, storeDatabase, activeStores);
+                    }
                     showToast(`已成功儲存「${nameInput}」菜單！`);
                 });
             }
@@ -557,7 +591,7 @@
 
             if (window.syncOrdersToCloud) {
                 const inputVal = document.getElementById('order-input')?.value || "";
-                window.syncOrdersToCloud(inputVal, memberStatuses);
+                window.syncOrdersToCloud(inputVal, memberStatuses, defaultMembers, storeDatabase, activeStores);
             }
 
             const labelMap = { leave: '請假 🏖️', none: '不吃便當 🚫', eat: '正常用餐 🍱' };
@@ -574,7 +608,7 @@
             renderMemberBadges();
             if (window.syncOrdersToCloud) {
                 const inputVal = document.getElementById('order-input')?.value || "";
-                window.syncOrdersToCloud(inputVal, memberStatuses);
+                window.syncOrdersToCloud(inputVal, memberStatuses, defaultMembers, storeDatabase, activeStores);
             }
             showToast("已將所有人狀態重置為正常用餐！");
             if (globalOrders.length > 0) renderTable();
@@ -667,6 +701,11 @@
             localStorage.setItem('team_active_stores', JSON.stringify(activeStores));
             renderActiveStoresSelector();
             renderStoreDatabase();
+
+            // 🔥 勾選今日開放店家時立即同步雲端
+            if (window.syncOrdersToCloud) {
+                window.syncOrdersToCloud(null, null, null, storeDatabase, activeStores);
+            }
         }
 
         function renderStoreDatabase() {
@@ -736,6 +775,11 @@
 
             renderActiveStoresSelector();
             renderStoreDatabase();
+
+            // 🔥 刪除店家時同步雲端
+            if (window.syncOrdersToCloud) {
+                window.syncOrdersToCloud(null, null, null, storeDatabase, activeStores);
+            }
         }
 
         function insertStoreHeader(storeName) {
@@ -1165,7 +1209,7 @@
             }
 
             if (window.syncOrdersToCloud) {
-                window.syncOrdersToCloud(newContent, memberStatuses);
+                window.syncOrdersToCloud(newContent, memberStatuses, defaultMembers, storeDatabase, activeStores);
             }
             updateAttendanceStats();
         }
@@ -1633,6 +1677,11 @@
                     input.value = '';
                     renderModalMemberList();
                     renderMemberBadges();
+
+                    // 🔥 新增人員時同步雲端
+                    if (window.syncOrdersToCloud) {
+                        window.syncOrdersToCloud(null, null, defaultMembers, storeDatabase, activeStores);
+                    }
                 } else {
                     showToast("成員已存在！", true);
                 }
@@ -1659,6 +1708,11 @@
                 input.value = '';
                 renderModalMemberList();
                 renderMemberBadges();
+
+                // 🔥 批量匯入人員時同步雲端
+                if (window.syncOrdersToCloud) {
+                    window.syncOrdersToCloud(null, null, defaultMembers, storeDatabase, activeStores);
+                }
                 showToast(`已成功批量匯入 ${count} 位成員！`);
             } else {
                 showToast("無新增新成員（可能皆已存在）", true);
@@ -1670,6 +1724,11 @@
             localStorage.setItem('team_members', JSON.stringify(defaultMembers));
             renderModalMemberList();
             renderMemberBadges();
+
+            // 🔥 刪除人員時同步雲端
+            if (window.syncOrdersToCloud) {
+                window.syncOrdersToCloud(null, null, defaultMembers, storeDatabase, activeStores);
+            }
         }
 
         function clearAllMembers() {
@@ -1680,6 +1739,11 @@
                 localStorage.setItem('team_member_statuses', JSON.stringify(memberStatuses));
                 renderModalMemberList();
                 renderMemberBadges();
+
+                // 🔥 清空人員時同步雲端
+                if (window.syncOrdersToCloud) {
+                    window.syncOrdersToCloud(null, memberStatuses, defaultMembers, storeDatabase, activeStores);
+                }
                 showToast("已清空所有成員清冊");
             }
         }
