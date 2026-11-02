@@ -9,6 +9,19 @@
     <meta http-equiv="Expires" content="0">
     
     <title>極簡團隊訂餐系統 - 人員出勤防漏版</title>
+
+    <!-- ⚡ 自動版本更新檢查機制：每次修改程式碼上傳時，請同步將此處版號往後改（例如 v02 -> v03），其他人開啟時就會自動強制更新 -->
+    <script>
+      const CURRENT_VERSION = 'v2026.11.02-01'; 
+      const savedVersion = localStorage.getItem('app_version');
+      if (savedVersion && savedVersion !== CURRENT_VERSION) {
+        localStorage.setItem('app_version', CURRENT_VERSION);
+        window.location.replace(window.location.pathname + '?v=' + Date.now());
+      } else if (!savedVersion) {
+        localStorage.setItem('app_version', CURRENT_VERSION);
+      }
+    </script>
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Font: Inter -->
@@ -287,7 +300,6 @@
             const auth = getAuth(app);
             db = getFirestore(app);
 
-            // 修正路徑：直接對應 orders 集合底下的 current_day 文件
             docRef = doc(db, 'orders', 'current_day');
 
             signInAnonymously(auth).then(() => {
